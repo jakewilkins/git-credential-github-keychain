@@ -163,8 +163,11 @@ fn get_password() -> Result<(), Box<dyn Error>> {
     let this_credential = stored_credentials.credentials.first();//into_iter().find(|&c| )
     match this_credential {
         Some(credential) => {
-            println!("fetched credentials {:?}", credential);
-            println!("The password is '{}'", credential.credential.token);
+            // println!("fetched credentials {:?}", credential);
+            println!("password={}", credential.credential.token);
+            if credential.username != "" {
+                println!("username={}", credential.username);
+            }
             Ok(())
         },
         None => Err(Box::new(CredentialError("No credential stored for this user".into())))
@@ -289,7 +292,7 @@ fn main() {
 
     let command = &args[1];
 
-    println!("command is: {}", command);
+    // println!("command is: {}", command);
     let result = match command.as_ref() {
         "set" => set_password(),
         "login" => login(),
