@@ -1,23 +1,21 @@
 const CLIENT_ID: &str = "Iv1.25f98349c343bc65";
 
-const DEVICE_FLOW_ENTRY_URL: &str = "https://github.com/login/device/code";
-const DEVICE_FLOW_POLL_URL: &str = "https://github.com/login/oauth/access_token";
-
 use std::{result::Result, error::Error, thread, time};
 use std::collections::HashMap;
 
-use crate::{util, Credential, CredentialConfig};
+use crate::{util, callback_server, Credential, CredentialConfig, AuthMode};
 
-pub fn device_flow_authorization_flow() -> Result<CredentialConfig, Box<dyn Error>> {
+pub fn device_flow_authorization_flow(mut config: CredentialConfig) -> Result<CredentialConfig, Box<dyn Error>> {
     let mut count = 0u32;
     let five_seconds = time::Duration::new(5, 0);
     let mut credential = Credential::empty(); 
     let client = reqwest::blocking::Client::new();
-    let mut inputs = util::read_input()?;
+    let device_flow_entry_url = format!("https://{}/login/device/code", config.host);
+    let device_flow_poll_url = format!("https://{}/login/oauth/access_token", config.host);
 
-    let res = client.post(DEVICE_FLOW_ENTRY_URL)
+    let res = client.post(device_flow_entry_url.as_str())
         .header("Accept", "application/json")
-        .body(format!("client_id={}", CLIENT_ID))
+        .body(format!("client_id={}", config.app.clone().unwrap().client_id))
         .send()?
         .json::<HashMap<String, serde_json::Value>>()?;
 
@@ -31,7 +29,7 @@ pub fn device_flow_authorization_flow() -> Result<CredentialConfig, Box<dyn Erro
 
     loop {
         count += 1;
-        let res = client.post(DEVICE_FLOW_POLL_URL)
+        let res = client.post(device_flow_poll_url.as_str())
             .header("Accept", "application/json")
             .body(poll_payload.clone())
             .send()?
@@ -58,7 +56,7 @@ pub fn device_flow_authorization_flow() -> Result<CredentialConfig, Box<dyn Erro
     };
 
     let token = credential.token.clone();
-    inputs.credential = credential;
+    config.credential = credential;
     let user_info = client.get("https://api.github.com/user")
         .header("User-Agent", "git-credential-github-keychain")
         .header("Authorization", format!("bearer {}", token))
@@ -67,16 +65,20 @@ pub fn device_flow_authorization_flow() -> Result<CredentialConfig, Box<dyn Erro
         .json::<HashMap<String, serde_json::Value>>()?;
 
     let username = user_info["login"].as_str().unwrap();
-    inputs.username = String::from(username.clone());
+    config.username = String::from(username.clone());
     // println!("logged in as: {}", username);
     
-    let host = inputs.host.clone();
-    let mut stored_credentials = util::fetch_credentials(&inputs)?;
-    stored_credentials.push(inputs.clone());
+    let host = config.host.clone();
+    let mut stored_credentials = util::fetch_credentials(&config)?;
+    stored_credentials.push(config.clone());
 
     let credentials_json = serde_json::to_string(&stored_credentials)?;
     let keyring = keyring::Keyring::new(&host, &username);
     keyring.set_password(&credentials_json)?;
 
-    Ok(inputs)
+    Ok(config)
+}
+
+pub fn oauth_flow_authorization_flow(mut config: CredentialConfig, mode: AuthMode) -> Result<CredentialConfig, Box<dyn Error>> {
+    Ok(config)
 }

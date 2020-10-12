@@ -1,0 +1,8 @@
+[credential]
+host = "github.com"
+protocol = "https"
+
+[app]
+client_id = "1v.123kljlkj"
+client_secret = "1;lk12j3;lkj123;lkj12h1"
+auth_mode = "oauth|device|oauth_refresh"

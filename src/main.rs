@@ -2,14 +2,14 @@ extern crate serde_derive;
 extern crate keyring;
 extern crate git_credential_github_keychain;
 
-use std::{result::Result, error::Error, env, process};
+use std::{result::Result, error::Error, process};
 
-use git_credential_github_keychain::{util, github, CredentialError};
+use structopt::StructOpt;
 
-fn get_password() -> Result<(), Box<dyn Error>> {
-    let inputs = util::read_input()?;
+use git_credential_github_keychain::{util, github, CredentialError, Cli, Action, CredentialConfig, AuthMode};
 
-    let stored_credentials = util::fetch_credentials(&inputs)?;
+fn get_password(config: CredentialConfig) -> Result<(), Box<dyn Error>> {
+    let stored_credentials = util::fetch_credentials(&config)?;
     let this_credential = stored_credentials.credentials.first();//into_iter().find(|&c| )
     match this_credential {
         Some(credential) => {
@@ -28,9 +28,8 @@ fn set_password() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn delete_password() -> Result<(), Box<dyn Error>> {
-    let inputs = util::read_input()?;
-    let keyring = keyring::Keyring::new(&inputs.host, &inputs.username);
+fn delete_password(config: CredentialConfig) -> Result<(), Box<dyn Error>> {
+    let keyring = keyring::Keyring::new(&config.host, &config.username);
 
     keyring.delete_password()?;
 
@@ -39,8 +38,14 @@ fn delete_password() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn login() -> Result<(), Box<dyn Error>> {
-    match github::device_flow_authorization_flow() {
+fn login(config: CredentialConfig) -> Result<(), Box<dyn Error>> {
+    let result = match config.app.clone().unwrap().auth_mode {
+        AuthMode::Device => github::device_flow_authorization_flow(config),
+        AuthMode::Oauth => github::device_flow_authorization_flow(config),
+        AuthMode::OauthRefresh => github::device_flow_authorization_flow(config),
+    };
+
+    match result {
         Ok(credentials) => {
             println!("Stored credentials for {} on {}", credentials.username, credentials.host);
             Ok(())
@@ -50,31 +55,22 @@ fn login() -> Result<(), Box<dyn Error>> {
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let opt = Cli::from_args();
 
-    if args.capacity() < 2 {
-        println!("usage: login|get|erase");
-        return;
-    }
-
-    let command = &args[1];
+    let config = util::get_credential_config(&opt).unwrap();
 
     // println!("command is: {}", command);
-    let result = match command.as_ref() {
-        "set" => set_password(),
-        "login" => login(),
-        "get" => get_password(),
-        "erase" => delete_password(),
-        _ => {
-            println!("usage: login|get|erase");
-            Ok(())
-        },
+    let result = match opt.cmd {
+        Action::Set   => set_password(),
+        Action::Login => login(config),
+        Action::Get   => get_password(config),
+        Action::Erase => delete_password(config),
     };
 
     match result {
         Ok(_) => {},
         Err(e) => {
-            eprintln!("error processing {}: {}", command, e);
+            eprintln!("error processing {:?}: {}", opt.cmd, e);
             process::exit(1);
         }
     }
