@@ -55,7 +55,7 @@ pub enum Action {
     /// Fetch keychain information for configured environment
     Get,
     /// Unsupported - this is for compat with osxkeychain
-    Set,
+    Store,
     /// Remove stored credentials from keychain
     Erase,
     /// Authenticate the configured App and store credentials in keychain

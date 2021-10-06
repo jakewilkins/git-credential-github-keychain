@@ -32,7 +32,7 @@ fn parse_line(line: String, mut input: CredentialConfig) -> Result<CredentialCon
         "username" => input.username = value,
         "host" => input.host = value,
         "protocol" => input.protocol = value,
-        _ => return Err(ParseError {reason: String::from("unknown attribute")}),
+        _ => return Err(ParseError {reason: String::from(format!("unknown attribute: {}={}", name, value))}),
     }
     Ok(input)
 }

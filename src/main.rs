@@ -25,6 +25,8 @@ fn get_password(config: CredentialConfig) -> Result<(), Box<dyn Error>> {
 
 fn set_password() -> Result<(), Box<dyn Error>> {
     eprintln!("setting password not supported, use login");
+    let input = util::read_input();
+    eprintln!("{:?}", input);
     Ok(())
 }
 
@@ -41,8 +43,8 @@ fn delete_password(config: CredentialConfig) -> Result<(), Box<dyn Error>> {
 fn login(config: CredentialConfig) -> Result<(), Box<dyn Error>> {
     let result = match config.app.clone().unwrap().auth_mode {
         AuthMode::Device => github::device_flow_authorization_flow(config),
-        AuthMode::Oauth => github::device_flow_authorization_flow(config),
-        AuthMode::OauthRefresh => github::device_flow_authorization_flow(config),
+        AuthMode::Oauth => github::oauth_flow_authorization_flow(config, AuthMode::Oauth),
+        AuthMode::OauthRefresh => github::oauth_flow_authorization_flow(config, AuthMode::OauthRefresh),
     };
 
     match result {
@@ -61,7 +63,7 @@ fn main() {
 
     // println!("command is: {}", command);
     let result = match opt.cmd {
-        Action::Set   => set_password(),
+        Action::Store   => set_password(),
         Action::Login => login(config),
         Action::Get   => get_password(config),
         Action::Erase => delete_password(config),

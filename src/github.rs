@@ -1,9 +1,7 @@
-const CLIENT_ID: &str = "Iv1.25f98349c343bc65";
-
 use std::{result::Result, error::Error, thread, time};
 use std::collections::HashMap;
 
-use crate::{util, callback_server, Credential, CredentialConfig, AuthMode};
+use crate::{util, callback_server, Credential, CredentialConfig, AuthMode, ParseError};
 
 pub fn device_flow_authorization_flow(mut config: CredentialConfig) -> Result<CredentialConfig, Box<dyn Error>> {
     let mut count = 0u32;
@@ -12,10 +10,11 @@ pub fn device_flow_authorization_flow(mut config: CredentialConfig) -> Result<Cr
     let client = reqwest::blocking::Client::new();
     let device_flow_entry_url = format!("https://{}/login/device/code", config.host);
     let device_flow_poll_url = format!("https://{}/login/oauth/access_token", config.host);
+    let app_config = config.app.clone().expect("You must provide an App configuration to login.");
 
     let res = client.post(device_flow_entry_url.as_str())
         .header("Accept", "application/json")
-        .body(format!("client_id={}", config.app.clone().unwrap().client_id))
+        .body(format!("client_id={}", app_config.client_id))
         .send()?
         .json::<HashMap<String, serde_json::Value>>()?;
 
@@ -23,7 +22,7 @@ pub fn device_flow_authorization_flow(mut config: CredentialConfig) -> Result<Cr
     println!("And enter code: {}", res["user_code"].as_str().unwrap());
 
     let poll_payload = format!("client_id={}&device_code={}&grant_type=urn:ietf:params:oauth:grant-type:device_code",
-        CLIENT_ID,
+        app_config.client_id,
         res["device_code"].as_str().unwrap()
     );
 
@@ -57,14 +56,8 @@ pub fn device_flow_authorization_flow(mut config: CredentialConfig) -> Result<Cr
 
     let token = credential.token.clone();
     config.credential = credential;
-    let user_info = client.get("https://api.github.com/user")
-        .header("User-Agent", "git-credential-github-keychain")
-        .header("Authorization", format!("bearer {}", token))
-        .header("Accept", "application/json")
-        .send()?
-        .json::<HashMap<String, serde_json::Value>>()?;
 
-    let username = user_info["login"].as_str().unwrap();
+    let username = get_username(client, token.as_str().clone())?;
     config.username = String::from(username.clone());
     // println!("logged in as: {}", username);
     
@@ -80,5 +73,66 @@ pub fn device_flow_authorization_flow(mut config: CredentialConfig) -> Result<Cr
 }
 
 pub fn oauth_flow_authorization_flow(mut config: CredentialConfig, mode: AuthMode) -> Result<CredentialConfig, Box<dyn Error>> {
-    Ok(config)
+    let app = config.app.clone().expect("You must configure an App to login with.");
+    let auth_url = format!("https://{}/login/oauth/authorize?client_id={}", config.host, app.client_id);
+    let code_exchange_url = format!("https://{}/login/oauth/access_token", config.host);
+
+    println!("Please visit the following URL in your browser and Authorize");
+    println!("{}", auth_url);
+
+    let code = match callback_server::start() {
+        Some(value) => value,
+        None => return Err(Box::new(ParseError {reason: String::from("Unable to get OAuth Code from GitHub.")}))
+    };
+
+    let client = reqwest::blocking::Client::new();
+    let res = client.post(code_exchange_url.as_str())
+        .header("User-Agent", "git-credential-github-keychain")
+        .header("Accept", "application/json")
+        .body(format!("client_id={}&client_secret={}&code={}", app.client_id, app.client_secret.expect("OAuth flow requires client secret"), code))
+        .send()?
+        // .text()?;
+    // println!("received response!: {}", res);
+        .json::<HashMap<String, serde_json::Value>>()?;
+
+    if res.contains_key("error") {
+        Err(Box::new(ParseError {reason: String::from("Unable to get OAuth Code from GitHub.")}))
+    } else {
+        // println!("{:?}", res);
+        let username = get_username(client, res["access_token"].as_str().expect("Didn't not find an access_token").clone())?;
+        config.username = username;
+
+        match mode {
+            AuthMode::Oauth => {
+                config.credential.token = String::from(res["access_token"].as_str().unwrap());
+            },
+            AuthMode::OauthRefresh => {
+                config.credential.token = String::from(res["access_token"].as_str().expect("Did not find an access token"));
+                // let expires_in
+
+                // config.credential.expiry = String::from(res["expires_in"].as_i64().unwrap("Did not find an expiration"));
+                config.credential.refresh_token = String::from(res["refresh_token"].as_str().expect("Did not find a refresh token"));
+            }
+            AuthMode::Device => {}
+        }
+        Ok(config)
+    }
+}
+
+fn get_username(client: reqwest::blocking::Client, token: &str) -> Result<String, Box<dyn Error>> {
+    let user_info = client.get("https://api.github.com/user")
+        .header("User-Agent", "git-credential-github-keychain")
+        .header("Authorization", format!("bearer {}", token))
+        .header("Accept", "application/json")
+        .send()?
+        .json::<HashMap<String, serde_json::Value>>()?;
+
+    if user_info.contains_key("login") {
+        let username = user_info["login"].as_str().unwrap();
+
+        Ok(String::from(username.clone()))
+    } else {
+        println!("{:?}", user_info);
+        Err(Box::new(ParseError {reason: String::from("Unable to get OAuth Code from GitHub.")}))
+    }
 }
