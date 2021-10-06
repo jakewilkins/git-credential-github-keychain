@@ -10,7 +10,7 @@ use std::io::{self, Read};
 fn parse_line(line: String, mut input: CredentialConfig) -> Result<CredentialConfig, ParseError> {
     let mut split = line.split("=");
     // let vec = split.clone().collect::<Vec<&str>>();
-    // println!("splt into {:?}", vec);
+    // eprintln!("splt into {:?}", split);
     if split.clone().count() != 2 {
         return Err(ParseError {reason: String::from("line needs =")});
     }
@@ -18,7 +18,7 @@ fn parse_line(line: String, mut input: CredentialConfig) -> Result<CredentialCon
         Some(s) => s,
         None => return Err(ParseError {reason: String::from("line needs a name")}),
     };
-    
+
     let value = match split.next() {
         Some(v) => String::from(v),
         None => return Err(ParseError {reason: String::from("line neads a value")}),
@@ -27,6 +27,7 @@ fn parse_line(line: String, mut input: CredentialConfig) -> Result<CredentialCon
         "username" => input.username = value,
         "host" => input.host = value,
         "protocol" => input.protocol = value,
+        "path" => {},
         _ => return Err(ParseError {reason: String::from("unknown attribute")}),
     }
     Ok(input)

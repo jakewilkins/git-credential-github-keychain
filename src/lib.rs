@@ -3,7 +3,6 @@
 extern crate serde_derive;
 
 pub mod github;
-pub mod callback_server;
 pub mod util;
 
 use std::{fmt, error::Error};

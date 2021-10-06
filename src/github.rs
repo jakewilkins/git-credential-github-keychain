@@ -11,13 +11,14 @@ use crate::{util, Credential, CredentialConfig};
 pub fn device_flow_authorization_flow() -> Result<CredentialConfig, Box<dyn Error>> {
     let mut count = 0u32;
     let five_seconds = time::Duration::new(5, 0);
-    let mut credential = Credential::empty(); 
+    let mut credential = Credential::empty();
     let client = reqwest::blocking::Client::new();
     let mut inputs = util::read_input()?;
+    let username: String;
 
     let res = client.post(DEVICE_FLOW_ENTRY_URL)
         .header("Accept", "application/json")
-        .body(format!("client_id={}", CLIENT_ID))
+        .body(format!("client_id={}", inputs.username))
         .send()?
         .json::<HashMap<String, serde_json::Value>>()?;
 
@@ -25,7 +26,7 @@ pub fn device_flow_authorization_flow() -> Result<CredentialConfig, Box<dyn Erro
     println!("And enter code: {}", res["user_code"].as_str().unwrap());
 
     let poll_payload = format!("client_id={}&device_code={}&grant_type=urn:ietf:params:oauth:grant-type:device_code",
-        CLIENT_ID,
+        inputs.username,
         res["device_code"].as_str().unwrap()
     );
 
@@ -59,23 +60,27 @@ pub fn device_flow_authorization_flow() -> Result<CredentialConfig, Box<dyn Erro
 
     let token = credential.token.clone();
     inputs.credential = credential;
-    let user_info = client.get("https://api.github.com/user")
-        .header("User-Agent", "git-credential-github-keychain")
-        .header("Authorization", format!("bearer {}", token))
-        .header("Accept", "application/json")
-        .send()?
-        .json::<HashMap<String, serde_json::Value>>()?;
+    if inputs.username.is_empty() {
+        let user_info = client.get("https://api.github.com/user")
+            .header("User-Agent", "git-credential-github-keychain")
+            .header("Authorization", format!("bearer {}", token))
+            .header("Accept", "application/json")
+            .send()?
+            .json::<HashMap<String, serde_json::Value>>()?;
 
-    let username = user_info["login"].as_str().unwrap();
-    inputs.username = String::from(username.clone());
+        username = String::from(user_info["login"].as_str().unwrap());
+        inputs.username = username.clone();
+    } else {
+        username = inputs.username.clone();
+    }
     // println!("logged in as: {}", username);
-    
+
     let host = inputs.host.clone();
     let mut stored_credentials = util::fetch_credentials(&inputs)?;
     stored_credentials.push(inputs.clone());
 
     let credentials_json = serde_json::to_string(&stored_credentials)?;
-    let keyring = keyring::Keyring::new(&host, &username);
+    let keyring = keyring::Keyring::new(&host, &username.as_str());
     keyring.set_password(&credentials_json)?;
 
     Ok(inputs)
