@@ -39,8 +39,9 @@ fn delete_password() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn login() -> Result<(), Box<dyn Error>> {
-    match github::device_flow_authorization_flow() {
+fn login(client_id: Option<&String>) -> Result<(), Box<dyn Error>> {
+    let conf = util::resolve_username(client_id)?;
+    match github::device_flow_authorization_flow(conf) {
         Ok(credentials) => {
             println!("Stored credentials for {} on {}", credentials.username, credentials.host);
             Ok(())
@@ -62,7 +63,7 @@ fn main() {
     // println!("command is: {}", command);
     let result = match command.as_ref() {
         "set" => set_password(),
-        "login" => login(),
+        "login" => login(args.get(2)),
         "get" => get_password(),
         "erase" => delete_password(),
         _ => {

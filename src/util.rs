@@ -1,6 +1,5 @@
 
 use crate::{StoredCredentials, CredentialConfig, ParseError};
-
 use std::{error::Error};
 use std::io::{self, Read};
 
@@ -48,6 +47,19 @@ pub fn read_input() -> Result<CredentialConfig, Box<dyn Error>> {
     }
 
     Ok(input)
+}
+
+pub fn resolve_username(client_id: Option<&String>) -> Result<CredentialConfig, Box<dyn Error>> {
+    match client_id {
+        Some(client_id) => {
+            let mut conf = CredentialConfig::empty();
+            conf.username = client_id.to_owned();
+            Ok(conf)
+        },
+        None => {
+            read_input()
+        }
+    }
 }
 
 pub fn fetch_credentials(config: &CredentialConfig) -> Result<StoredCredentials, Box<dyn Error>> {
