@@ -1,5 +1,5 @@
 
-use crate::{StoredCredentials, CredentialConfig, ParseError};
+use crate::{CredentialConfig, ParseError};
 use std::{error::Error};
 use std::io::{self, Read};
 
@@ -59,19 +59,6 @@ pub fn resolve_username(client_id: Option<&String>) -> Result<CredentialConfig, 
         None => {
             read_input()
         }
-    }
-}
-
-pub fn fetch_credentials(config: &CredentialConfig) -> Result<StoredCredentials, Box<dyn Error>> {
-    let keyring = keyring::Keyring::new(&config.host, &config.username);
-    let data = keyring.get_password();
-
-    match data {
-        Ok(d) => {
-            let stored: StoredCredentials = serde_json::from_str(d.as_str())?;
-            Ok(stored)
-        },
-        _ => Ok(StoredCredentials::empty())
     }
 }
 

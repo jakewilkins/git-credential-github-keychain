@@ -16,7 +16,7 @@ pub fn fetch_credentials(config: &CredentialConfig) -> Result<StoredCredentials,
 }
 
 pub fn store_credentials(config: &CredentialConfig) -> Result<(), Box<dyn Error>> {
-    let mut stored_credentials = util::fetch_credentials(&config)?;
+    let mut stored_credentials = fetch_credentials(&config)?;
     let host = config.host.clone();
     let username = config.username.clone();
 
