@@ -6,14 +6,13 @@ const DEVICE_FLOW_POLL_URL: &str = "https://github.com/login/oauth/access_token"
 use std::{result::Result, error::Error, thread, time};
 use std::collections::HashMap;
 
-use crate::{util, Credential, CredentialConfig};
+use crate::{Credential, CredentialConfig};
 
 pub fn device_flow_authorization_flow(mut config: CredentialConfig) -> Result<CredentialConfig, Box<dyn Error>> {
     let mut count = 0u32;
     let five_seconds = time::Duration::new(5, 0);
     let mut credential = Credential::empty();
     let client = reqwest::blocking::Client::new();
-    let username: String;
 
     let res = client.post(DEVICE_FLOW_ENTRY_URL)
         .header("Accept", "application/json")
@@ -67,20 +66,10 @@ pub fn device_flow_authorization_flow(mut config: CredentialConfig) -> Result<Cr
             .send()?
             .json::<HashMap<String, serde_json::Value>>()?;
 
-        username = String::from(user_info["login"].as_str().unwrap());
+        let username = String::from(user_info["login"].as_str().unwrap());
         config.username = username.clone();
-    } else {
-        username = config.username.clone();
     }
     // println!("logged in as: {}", username);
-
-    let host = config.host.clone();
-    let mut stored_credentials = util::fetch_credentials(&config)?;
-    stored_credentials.push(config.clone());
-
-    let credentials_json = serde_json::to_string(&stored_credentials)?;
-    let keyring = keyring::Keyring::new(&host, &username.as_str());
-    keyring.set_password(&credentials_json)?;
 
     Ok(config)
 }

@@ -4,12 +4,12 @@ extern crate git_credential_github_keychain;
 
 use std::{result::Result, error::Error, env, process};
 
-use git_credential_github_keychain::{util, github, CredentialError};
+use git_credential_github_keychain::{util, github, storage, CredentialError};
 
 fn get_password() -> Result<(), Box<dyn Error>> {
     let inputs = util::read_input()?;
 
-    let stored_credentials = util::fetch_credentials(&inputs)?;
+    let stored_credentials = storage::fetch_credentials(&inputs)?;
     let this_credential = stored_credentials.credentials.first();//into_iter().find(|&c| )
     match this_credential {
         Some(credential) => {
@@ -43,6 +43,8 @@ fn login(client_id: Option<&String>) -> Result<(), Box<dyn Error>> {
     let conf = util::resolve_username(client_id)?;
     match github::device_flow_authorization_flow(conf) {
         Ok(credentials) => {
+            storage::store_credentials(&credentials)?;
+
             println!("Stored credentials for {} on {}", credentials.username, credentials.host);
             Ok(())
         },

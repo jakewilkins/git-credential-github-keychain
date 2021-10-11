@@ -4,6 +4,7 @@ extern crate serde_derive;
 
 pub mod github;
 pub mod util;
+pub mod storage;
 
 use std::{fmt, error::Error};
 
