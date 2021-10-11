@@ -7,7 +7,7 @@ Primary goals are:
 - Secure storage. Where possible we should utilize OS keystorage facilities for storing secrets.
 - Key rotation. Keys should transparently rotate when possible.
 
-:fingers_crossed: Aiming for cross-platform compatibility, I will at least be using it on MacOS and (debian) Linux.
+🤞 Aiming for cross-platform compatibility, I will at least be using it on MacOS and (debian) Linux.
 
 
 ### Setup
