@@ -1,5 +1,5 @@
 
-use crate::{util, StoredCredentials, CredentialConfig, ParseError};
+use crate::{util, StoredCredentials, CredentialConfig, ParseError, GithubKeychainConfig};
 use std::{error::Error};
 
 pub fn fetch_credentials(config: &CredentialConfig) -> Result<StoredCredentials, Box<dyn Error>> {
@@ -25,6 +25,14 @@ pub fn store_credentials(config: &CredentialConfig) -> Result<(), Box<dyn Error>
     let credentials_json = serde_json::to_string(&stored_credentials)?;
     let keyring = keyring::Keyring::new(&host.as_str(), &username.as_str());
     keyring.set_password(&credentials_json)?;
+
+    Ok(())
+}
+
+pub fn delete_credentials(config: &CredentialConfig, _gh_conf: GithubKeychainConfig) -> Result<(), Box<dyn Error>> {
+    let keyring = keyring::Keyring::new(&config.host, &config.username);
+
+    keyring.delete_password()?;
 
     Ok(())
 }

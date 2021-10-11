@@ -30,9 +30,7 @@ fn set_password() -> Result<(), Box<dyn Error>> {
 
 fn delete_password() -> Result<(), Box<dyn Error>> {
     let inputs = util::read_input()?;
-    let keyring = keyring::Keyring::new(&inputs.host, &inputs.username);
-
-    keyring.delete_password()?;
+    storage::delete_credentials(&inputs, gh_conf)?;
 
     println!("The password has been deleted");
 
@@ -41,6 +39,11 @@ fn delete_password() -> Result<(), Box<dyn Error>> {
 
 fn login(client_id: Option<&String>) -> Result<(), Box<dyn Error>> {
     let conf = util::resolve_username(client_id)?;
+
+    if conf.username.is_empty() {
+        return Err(Box::new(CredentialError("No Client ID configuration found.".into())))
+    }
+
     match github::device_flow_authorization_flow(conf) {
         Ok(credentials) => {
             storage::store_credentials(&credentials)?;
