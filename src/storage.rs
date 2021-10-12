@@ -1,9 +1,9 @@
 
-use crate::{StoredCredentials, Credential, CredentialRequest};
+use crate::{Credential, CredentialRequest};
 use std::{error::Error};
 use keyring::Keyring;
 
-fn fetch_keychain_credential(request: &CredentialRequest) -> Option<StoredCredentials> {
+fn fetch_keychain_credential(request: &CredentialRequest) -> Option<Credential> {
     let client_id = request.client_id();
     let keyring = Keyring::new(&request.host, &client_id);
     let data = keyring.get_password();
@@ -19,13 +19,13 @@ fn fetch_keychain_credential(request: &CredentialRequest) -> Option<StoredCreden
     }
 }
 
-fn fetch_file_credential(request: &CredentialRequest) -> Option<StoredCredentials> {
+fn fetch_file_credential(request: &CredentialRequest) -> Option<Credential> {
     let client_id = request.client_id();
 
     request.config.credential_for(client_id)
 }
 
-pub fn fetch_credential(request: &CredentialRequest) -> Option<StoredCredentials> {
+pub fn fetch_credential(request: &CredentialRequest) -> Option<Credential> {
     let keychain_result = fetch_keychain_credential(&request);
     if keychain_result.is_some() {
         return keychain_result
@@ -34,18 +34,15 @@ pub fn fetch_credential(request: &CredentialRequest) -> Option<StoredCredentials
     fetch_file_credential(&request)
 }
 
-fn store_keychain_credential(credential: &Credential, request: &CredentialRequest) -> Result<(), Box<dyn Error>> {
-    // let mut stored_credentials = match fetch_keychain_credential(&request) {
+fn store_keychain_credential(credential: &mut Credential, request: &CredentialRequest) -> Result<(), Box<dyn Error>> {
+    // let mut credentials = match fetch_keychain_credential(&request) {
     //     Some(sc) => sc,
     //     None => StoredCredentials::empty()
     // };
     let client_id = request.client_id();
-    let mut stored_credentials = StoredCredentials::empty();
-    stored_credentials.client_id = client_id.clone();
+    credential.client_id = client_id.clone();
 
-    stored_credentials.push(credential.clone());
-
-    let credentials_json = serde_json::to_string(&stored_credentials)?;
+    let credentials_json = serde_json::to_string(&credential)?;
 
     let keyring = Keyring::new(&request.host, &client_id);
 
@@ -55,16 +52,16 @@ fn store_keychain_credential(credential: &Credential, request: &CredentialReques
     }
 }
 
-fn store_file_credential(credential: &Credential, request: &mut CredentialRequest) -> Result<(), Box<dyn Error>> {
+fn store_file_credential(credential: &mut Credential, request: &mut CredentialRequest) -> Result<(), Box<dyn Error>> {
     let client_id = request.client_id();
-    let stored_credential = StoredCredentials { client_id: client_id, credential: credential.to_owned()};
-    match request.config.store_credential(stored_credential) {
+    credential.client_id = client_id;
+    match request.config.store_credential(credential) {
         Ok(_) => Ok(()),
         Err(e) => Err(Box::new(e))
     }
 }
 
-pub fn store_credential(credential: &Credential, request: &mut CredentialRequest) -> Result<(), Box<dyn Error>> {
+pub fn store_credential(credential: &mut Credential, request: &mut CredentialRequest) -> Result<(), Box<dyn Error>> {
     let keychain_result = store_keychain_credential(credential, request);
     if keychain_result.is_ok() {
         return keychain_result

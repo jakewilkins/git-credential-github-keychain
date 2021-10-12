@@ -93,9 +93,7 @@ pub fn execute_fallback(request: CredentialRequest) -> Result<(), Box<dyn Error>
     let mut child = command.spawn().expect("failed to spawn fallback");
     let mut stdin = child.stdin.take().expect("Failed to open stdin");
 
-    // std::thread::spawn(move || {
     stdin.write(format!("host={}\n", request.host).as_str().as_bytes())?;
-    // });
 
     // .arg("Hello world")
     // eprintln!("cmd: {:?}", command);
@@ -109,7 +107,7 @@ pub fn execute_fallback(request: CredentialRequest) -> Result<(), Box<dyn Error>
 
 pub fn resolve_credential(credential_request: &CredentialRequest) -> Result<Option<Credential>, Box<dyn Error>> {
     match storage::fetch_credential(&credential_request) {
-        Some(sc) => Ok(Some(sc.credential)),
+        Some(sc) => Ok(Some(sc)),
         None => Ok(None),
     }
     // let this_credential = stored_credentials.credential.clone();//into_iter().find(|&c| )

@@ -55,15 +55,15 @@ fn delete_password() -> Result<(), Box<dyn Error>> {
 
 fn login(client_id: Option<&String>) -> Result<(), Box<dyn Error>> {
     let mut conf = util::resolve_username(client_id)?;
-    eprintln!("conf: {:?}", &conf);
+    // eprintln!("conf: {:?}", &conf);
 
     if conf.username.is_empty() {
         return Err(Box::new(CredentialError("No Client ID configuration found.".into())))
     }
 
     match github::device_flow_authorization_flow(conf.clone()) {
-        Ok(credentials) => {
-            storage::store_credential(&credentials, &mut conf)?;
+        Ok(mut credentials) => {
+            storage::store_credential(&mut credentials, &mut conf)?;
 
             println!("Stored credentials for {}.", conf.username);
             Ok(())

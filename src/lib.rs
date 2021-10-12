@@ -18,24 +18,25 @@ impl fmt::Display for CredentialError {
 
 impl Error for CredentialError {}
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
-pub struct StoredCredentials {
-    pub client_id: String,
-    pub credential: Credential
-}
+// #[derive(Serialize, Deserialize, Debug, Default, Clone)]
+// pub struct StoredCredentials {
+//     pub client_id: String,
+//     pub credential: Credential
+// }
 
-impl StoredCredentials {
-    fn empty() -> StoredCredentials {
-        StoredCredentials { client_id: String::new(), credential: Credential::empty()}
-    }
+// impl StoredCredentials {
+//     fn empty() -> StoredCredentials {
+//         StoredCredentials { client_id: String::new(), credential: Credential::empty()}
+//     }
 
-    fn push(&mut self, cred: Credential) {
-        self.credential = cred
-    }
-}
+//     fn push(&mut self, cred: Credential) {
+//         self.credential = cred
+//     }
+// }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Credential {
+    pub client_id: String,
     pub token: String,
     pub expiry: String,
     pub refresh_token: String,
@@ -44,6 +45,7 @@ pub struct Credential {
 impl Credential {
     fn empty() -> Credential {
         Credential {
+            client_id: String::new(),
             token: String::new(),
             expiry: String::new(),
             refresh_token: String::new(),
@@ -112,9 +114,9 @@ pub struct AppConfig {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GithubKeychainConfig {
     version: u8,
+    fallback: String,
     app_configs: Vec<AppConfig>,
-    stored_credentials: Vec<StoredCredentials>,
-    fallback: String
+    credentials: Vec<Credential>,
 }
 
 impl GithubKeychainConfig {
@@ -133,30 +135,31 @@ impl GithubKeychainConfig {
         configs.into_iter().find(|ac| ac.path == owner)
     }
 
-    pub fn credential_for(&self, client_id: String) -> Option<StoredCredentials> {
-        let configs = self.stored_credentials.clone();
+    pub fn credential_for(&self, client_id: String) -> Option<Credential> {
+        let configs = self.credentials.clone();
 
         // TODO: also compare owner/repo maybe, and allow that to
         // override plain owner matches
         configs.into_iter().find(|sc| sc.client_id == client_id)
     }
 
-    pub fn store_credential(&mut self, credential: StoredCredentials) -> Result<(), confy::ConfyError> {
-        match self.stored_credentials.iter().position(|sc| sc.client_id == credential.client_id) {
+    pub fn store_credential(&mut self, credential: &Credential) -> Result<(), confy::ConfyError> {
+        match self.credentials.iter().position(|sc| sc.client_id == credential.client_id) {
             Some(index) => {
-                self.stored_credentials.remove(index);
+                self.credentials.remove(index);
             },
             None => {},
         };
-        self.stored_credentials.push(credential);
+        self.credentials.push(credential.clone());
+        // eprintln!("conf: {:?}", self);
         confy::store("github-keychain", self)
     }
 
     pub fn delete_credential(&mut self, request: &CredentialRequest) -> Result<(), confy::ConfyError> {
         let client_id = request.client_id();
-        match self.stored_credentials.iter().position(|sc| sc.client_id == client_id) {
+        match self.credentials.iter().position(|sc| sc.client_id == client_id) {
             Some(index) => {
-                self.stored_credentials.remove(index);
+                self.credentials.remove(index);
             },
             None => {},
         };
@@ -166,7 +169,7 @@ impl GithubKeychainConfig {
 
 /// `GithubKeychainConfig` implements `Default`
 impl ::std::default::Default for GithubKeychainConfig {
-    fn default() -> Self { Self { version: 0, app_configs: Vec::new(), stored_credentials: Vec::new(), fallback: String::new() } }
+    fn default() -> Self { Self { version: 0, app_configs: Vec::new(), credentials: Vec::new(), fallback: String::new() } }
 }
 
 #[derive(Debug)]
