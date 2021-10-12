@@ -7,6 +7,8 @@ pub mod util;
 pub mod storage;
 
 use std::{fmt, error::Error};
+use chrono::{DateTime};
+use chrono::offset::Utc;
 
 #[derive(Debug)]
 pub struct CredentialError(pub String);
@@ -50,6 +52,15 @@ impl Credential {
             expiry: String::new(),
             refresh_token: String::new(),
         }
+    }
+
+    fn is_expired(&self) -> bool {
+        let exp = match DateTime::parse_from_rfc3339(self.expiry.as_str()) {
+            Ok(time) => time,
+            Err(_) => return false
+        };
+        let now = Utc::now();
+        now > exp
     }
 }
 

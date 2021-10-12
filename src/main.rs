@@ -4,15 +4,15 @@ extern crate git_credential_github_keychain;
 
 use std::{result::Result, error::Error, env, process};
 
-use git_credential_github_keychain::{util, github, storage, CredentialError};
+use git_credential_github_keychain::{util, storage, CredentialError};
 
 fn get_password() -> Result<(), Box<dyn Error>> {
-    let request = util::read_input()?;
+    let mut request = util::read_input()?;
 
     // eprintln!("request: {:?}", &request);
     if request.is_configured() {
         // eprintln!("is_configured!");
-        let this_credential = util::resolve_credential(&request)?;
+        let this_credential = util::resolve_credential(&mut request)?;
         match this_credential {
             Some(credential) => {
                 // eprintln!("found cred: {:?}", &credential);
@@ -61,14 +61,9 @@ fn login(client_id: Option<&String>) -> Result<(), Box<dyn Error>> {
         return Err(Box::new(CredentialError("No Client ID configuration found.".into())))
     }
 
-    match github::device_flow_authorization_flow(conf.clone()) {
-        Ok(mut credentials) => {
-            storage::store_credential(&mut credentials, &mut conf)?;
-
-            println!("Stored credentials for {}.", conf.username);
-            Ok(())
-        },
-        Err(e) => { Err(e) }
+    match util::login_and_store(&mut conf) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e)
     }
 }
 

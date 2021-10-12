@@ -1,5 +1,5 @@
 
-use crate::{storage, CredentialRequest, ParseError, Credential, CredentialError};
+use crate::{storage, CredentialRequest, ParseError, Credential, CredentialError, github};
 use std::{error::Error};
 use std::io::{self, Read, Write};
 use std::process::{Command, Stdio};
@@ -105,9 +105,33 @@ pub fn execute_fallback(request: CredentialRequest) -> Result<(), Box<dyn Error>
     Ok(())
 }
 
-pub fn resolve_credential(credential_request: &CredentialRequest) -> Result<Option<Credential>, Box<dyn Error>> {
+pub fn login_and_store(request: &mut CredentialRequest) -> Result<Credential, Box<dyn Error>> {
+    match github::device_flow_authorization_flow(request.clone()) {
+        Ok(mut credential) => {
+            storage::store_credential(&mut credential, request)?;
+
+            eprintln!("Stored credentials for {}.", request.username);
+            Ok(credential)
+        },
+        Err(e) => { Err(e) }
+    }
+}
+
+pub fn resolve_credential(credential_request: &mut CredentialRequest) -> Result<Option<Credential>, Box<dyn Error>> {
     match storage::fetch_credential(&credential_request) {
-        Some(sc) => Ok(Some(sc)),
+        Some(sc) => {
+            if !sc.is_expired() {
+                // eprintln!("sc is not expired");
+                Ok(Some(sc))
+            } else {
+                // eprintln!("sc is expired");
+                credential_request.username = credential_request.client_id();
+                match login_and_store(credential_request) {
+                    Ok(c) => Ok(Some(c)),
+                    Err(e) => Err(e)
+                }
+            }
+        },
         None => Ok(None),
     }
     // let this_credential = stored_credentials.credential.clone();//into_iter().find(|&c| )
