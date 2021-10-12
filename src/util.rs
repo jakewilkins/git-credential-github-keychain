@@ -1,12 +1,13 @@
 
-use crate::{CredentialConfig, ParseError};
+use crate::{storage, CredentialRequest, ParseError, Credential, CredentialError};
 use std::{error::Error};
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
+use std::process::{Command, Stdio};
 
-// use git_credential_github_keychain::CredentialConfig;
+// use git_credential_github_keychain::CredentialRequest;
 
 // Parse "name=value" strings
-fn parse_line(line: String, mut input: CredentialConfig) -> Result<CredentialConfig, ParseError> {
+fn parse_line(line: String, mut input: CredentialRequest) -> Result<CredentialRequest, ParseError> {
     let mut split = line.split("=");
     // let vec = split.clone().collect::<Vec<&str>>();
     // eprintln!("splt into {:?}", split);
@@ -26,17 +27,17 @@ fn parse_line(line: String, mut input: CredentialConfig) -> Result<CredentialCon
         "username" => input.username = value,
         "host" => input.host = value,
         "protocol" => input.protocol = value,
-        "path" => {},
+        "path" => input.path = value,
         _ => return Err(ParseError {reason: String::from("unknown attribute")}),
     }
     Ok(input)
 }
 
-pub fn read_input() -> Result<CredentialConfig, Box<dyn Error>> {
+pub fn read_input() -> Result<CredentialRequest, Box<dyn Error>> {
     let mut buffer = String::new();
     io::stdin().read_to_string(&mut buffer)?;
 
-    let mut input = CredentialConfig::empty();
+    let mut input = CredentialRequest::empty();
     // println!("read stdin: {}", buffer);
     // let deserialized = toml::from_str(&buffer);
     for line in buffer.split("\n") {
@@ -49,16 +50,68 @@ pub fn read_input() -> Result<CredentialConfig, Box<dyn Error>> {
     Ok(input)
 }
 
-pub fn resolve_username(client_id: Option<&String>) -> Result<CredentialConfig, Box<dyn Error>> {
+pub fn credential_error(msg: &str) -> Box<CredentialError> {
+    Box::new(CredentialError(msg.into()))
+}
+
+pub fn resolve_username(client_id: Option<&String>) -> Result<CredentialRequest, Box<dyn Error>> {
+    let mut conf = CredentialRequest::empty();
     match client_id {
         Some(client_id) => {
-            let mut conf = CredentialConfig::empty();
             conf.username = client_id.to_owned();
             Ok(conf)
         },
         None => {
-            read_input()
+            match conf.config.config_for(String::from("default")) {
+              Some(app_config) => {
+                let mut conf = CredentialRequest::empty();
+                conf.username = app_config.client_id.to_owned();
+                Ok(conf)
+              },
+              None => read_input()
+						}
         }
     }
 }
 
+pub fn execute_fallback(request: CredentialRequest) -> Result<(), Box<dyn Error>> {
+    let gh_conf = request.config;
+    if gh_conf.fallback.is_empty() {
+        return Ok(())
+    }
+
+    let mut command_parts: Vec<&str> = gh_conf.fallback.split_whitespace().collect();
+    let mut command = Command::new("git");
+    command.arg(format!("credential-{}", command_parts[0]));
+    command_parts.remove(0);
+
+    for arg in &command_parts {
+        command.arg(arg);
+    }
+    command.arg("get");
+    command.stdin(Stdio::piped());
+    let mut child = command.spawn().expect("failed to spawn fallback");
+    let mut stdin = child.stdin.take().expect("Failed to open stdin");
+
+    // std::thread::spawn(move || {
+    stdin.write(format!("host={}\n", request.host).as_str().as_bytes())?;
+    // });
+
+    // .arg("Hello world")
+    // eprintln!("cmd: {:?}", command);
+    // let output = child.stdout;
+    // eprintln!("output: {:?}", &output);
+    // let unwrapped = output.expect("Failed to execute command");
+    // println!("{:?}", unwrapped);
+
+    Ok(())
+}
+
+pub fn resolve_credential(credential_request: &CredentialRequest) -> Result<Option<Credential>, Box<dyn Error>> {
+    match storage::fetch_credential(&credential_request) {
+        Some(sc) => Ok(Some(sc.credential)),
+        None => Ok(None),
+    }
+    // let this_credential = stored_credentials.credential.clone();//into_iter().find(|&c| )
+    // Ok(Some(this_credential))
+}

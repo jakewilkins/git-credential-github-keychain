@@ -7,19 +7,31 @@ use std::{result::Result, error::Error, env, process};
 use git_credential_github_keychain::{util, github, storage, CredentialError};
 
 fn get_password() -> Result<(), Box<dyn Error>> {
-    let inputs = util::read_input()?;
+    let request = util::read_input()?;
 
-    let stored_credentials = storage::fetch_credentials(&inputs)?;
-    let this_credential = stored_credentials.credentials.first();//into_iter().find(|&c| )
-    match this_credential {
-        Some(credential) => {
-            println!("password={}", credential.credential.token);
-            if credential.username != "" {
-                println!("username={}", credential.username);
+    // eprintln!("request: {:?}", &request);
+    if request.is_configured() {
+        // eprintln!("is_configured!");
+        let this_credential = util::resolve_credential(&request)?;
+        match this_credential {
+            Some(credential) => {
+                // eprintln!("found cred: {:?}", &credential);
+                println!("host={}", request.host);
+                println!("protocol=https");
+                println!("username=x-oauth-token");
+                println!("password={}", credential.token);
+                // if credential.username != "" {
+                //     println!("username={}", credential.username);
+                // }
+                Ok(())
+            },
+            None => {
+                eprintln!("no credential found");
+                Err(Box::new(CredentialError("No credential stored for this user".into())))
             }
-            Ok(())
-        },
-        None => Err(Box::new(CredentialError("No credential stored for this user".into())))
+        }
+    } else {
+        util::execute_fallback(request)
     }
 }
 
@@ -29,8 +41,12 @@ fn set_password() -> Result<(), Box<dyn Error>> {
 }
 
 fn delete_password() -> Result<(), Box<dyn Error>> {
-    let inputs = util::read_input()?;
-    storage::delete_credentials(&inputs, gh_conf)?;
+    let mut request = util::read_input()?;
+    // TODO this doesn't work
+    // We'll have to resolve the app config from the path here
+    if request.is_configured() {
+        storage::delete_credential(&mut request)?;
+    }
 
     println!("The password has been deleted");
 
@@ -38,17 +54,18 @@ fn delete_password() -> Result<(), Box<dyn Error>> {
 }
 
 fn login(client_id: Option<&String>) -> Result<(), Box<dyn Error>> {
-    let conf = util::resolve_username(client_id)?;
+    let mut conf = util::resolve_username(client_id)?;
+    eprintln!("conf: {:?}", &conf);
 
     if conf.username.is_empty() {
         return Err(Box::new(CredentialError("No Client ID configuration found.".into())))
     }
 
-    match github::device_flow_authorization_flow(conf) {
+    match github::device_flow_authorization_flow(conf.clone()) {
         Ok(credentials) => {
-            storage::store_credentials(&credentials)?;
+            storage::store_credential(&credentials, &mut conf)?;
 
-            println!("Stored credentials for {} on {}", credentials.username, credentials.host);
+            println!("Stored credentials for {}.", conf.username);
             Ok(())
         },
         Err(e) => { Err(e) }
@@ -64,6 +81,8 @@ fn main() {
     }
 
     let command = &args[1];
+    // let cfg: GithubKeychainConfig = confy::load("github-keychain").unwrap();
+    // println!("cfg: {:?}", cfg);
 
     // println!("command is: {}", command);
     let result = match command.as_ref() {

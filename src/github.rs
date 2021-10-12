@@ -6,9 +6,9 @@ const DEVICE_FLOW_POLL_URL: &str = "https://github.com/login/oauth/access_token"
 use std::{result::Result, error::Error, thread, time};
 use std::collections::HashMap;
 
-use crate::{Credential, CredentialConfig};
+use crate::{Credential, CredentialRequest};
 
-pub fn device_flow_authorization_flow(mut config: CredentialConfig) -> Result<CredentialConfig, Box<dyn Error>> {
+pub fn device_flow_authorization_flow(config: CredentialRequest) -> Result<Credential, Box<dyn Error>> {
     let mut count = 0u32;
     let five_seconds = time::Duration::new(5, 0);
     let mut credential = Credential::empty();
@@ -20,8 +20,8 @@ pub fn device_flow_authorization_flow(mut config: CredentialConfig) -> Result<Cr
         .send()?
         .json::<HashMap<String, serde_json::Value>>()?;
 
-    println!("Please visit {} in your browser", res["verification_uri"]);
-    println!("And enter code: {}", res["user_code"].as_str().unwrap());
+    eprintln!("Please visit {} in your browser", res["verification_uri"]);
+    eprintln!("And enter code: {}", res["user_code"].as_str().unwrap());
 
     let poll_payload = format!("client_id={}&device_code={}&grant_type=urn:ietf:params:oauth:grant-type:device_code",
         config.username,
@@ -56,20 +56,7 @@ pub fn device_flow_authorization_flow(mut config: CredentialConfig) -> Result<Cr
         thread::sleep(five_seconds);
     };
 
-    let token = credential.token.clone();
-    config.credential = credential;
-    if config.username.is_empty() {
-        let user_info = client.get("https://api.github.com/user")
-            .header("User-Agent", "git-credential-github-keychain")
-            .header("Authorization", format!("bearer {}", token))
-            .header("Accept", "application/json")
-            .send()?
-            .json::<HashMap<String, serde_json::Value>>()?;
-
-        let username = String::from(user_info["login"].as_str().unwrap());
-        config.username = username.clone();
-    }
     // println!("logged in as: {}", username);
 
-    Ok(config)
+    Ok(credential)
 }
