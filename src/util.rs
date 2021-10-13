@@ -145,7 +145,17 @@ pub fn resolve_credential(credential_request: &mut CredentialRequest) -> Result<
                 }
             }
         },
-        None => Ok(None),
+        None => {
+            credential_request.username = credential_request.client_id();
+            if credential_request.is_configured() {
+                match login_and_store(credential_request) {
+                    Ok(c) => Ok(Some(c)),
+                    Err(e) => Err(e)
+                }
+            } else {
+                Ok(None)
+            }
+        },
     }
     // let this_credential = stored_credentials.credential.clone();//into_iter().find(|&c| )
     // Ok(Some(this_credential))
