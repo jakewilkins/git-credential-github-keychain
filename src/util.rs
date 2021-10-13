@@ -38,6 +38,7 @@ pub fn read_input() -> Result<CredentialRequest, Box<dyn Error>> {
     io::stdin().read_to_string(&mut buffer)?;
 
     let mut input = CredentialRequest::empty();
+
     // println!("read stdin: {}", buffer);
     // let deserialized = toml::from_str(&buffer);
     for line in buffer.split("\n") {

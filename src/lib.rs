@@ -10,6 +10,10 @@ use std::{fmt, error::Error};
 use chrono::{DateTime};
 use chrono::offset::Utc;
 
+#[cfg(target_family = "unix")]
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
+
 #[derive(Debug)]
 pub struct CredentialError(pub String);
 impl fmt::Display for CredentialError {
@@ -76,7 +80,7 @@ pub struct CredentialRequest {
 
 impl CredentialRequest {
     fn empty() -> CredentialRequest {
-        let cfg: GithubKeychainConfig = confy::load("github-keychain").unwrap();
+        let cfg: GithubKeychainConfig = confy::load("github-keychain", None).unwrap();
 
         CredentialRequest {
             username: String::new(),
@@ -170,7 +174,22 @@ impl GithubKeychainConfig {
         };
         self.credentials.push(credential.clone());
         // eprintln!("conf: {:?}", self);
-        confy::store("github-keychain", self)
+        if cfg!(unix) {
+            let path = confy::get_configuration_file_path("github-keychain", None)?;
+            match fs::metadata(&path) {
+                Ok(meta) => {
+                    let mut perms = meta.permissions();
+                    let mode = 0o600;
+                    eprintln!("permissions: {:o}", perms.mode());
+                    if !perms.mode() == mode {
+                        perms.set_mode(mode);
+                        fs::set_permissions(path, perms).unwrap();
+                    }
+                },
+                Err(_) => {}
+            }
+        }
+        confy::store("github-keychain", None, self)
     }
 
     pub fn delete_credential(&mut self, request: &CredentialRequest) -> Result<(), confy::ConfyError> {
@@ -181,7 +200,7 @@ impl GithubKeychainConfig {
             },
             None => {},
         };
-        confy::store("github-keychain", self)
+        confy::store("github-keychain", None, self)
     }
 }
 
