@@ -145,15 +145,14 @@ impl GithubKeychainConfig {
             None => {},
         };
         self.credentials.push(credential.clone());
-        // eprintln!("conf: {:?}", self);
+
         if cfg!(unix) {
             let path = confy::get_configuration_file_path("github-keychain", None)?;
             match fs::metadata(&path) {
                 Ok(meta) => {
                     let mut perms = meta.permissions();
                     let mode = 0o600;
-                    eprintln!("permissions: {:o}", perms.mode());
-                    if !perms.mode() == mode {
+                    if perms.mode() != mode {
                         perms.set_mode(mode);
                         fs::set_permissions(path, perms).unwrap();
                     }
