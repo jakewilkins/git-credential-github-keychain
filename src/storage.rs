@@ -35,10 +35,6 @@ pub fn fetch_credential(request: &CredentialRequest) -> Option<Credential> {
 }
 
 fn store_keychain_credential(credential: &mut Credential, request: &CredentialRequest) -> Result<(), Box<dyn Error>> {
-    // let mut credentials = match fetch_keychain_credential(&request) {
-    //     Some(sc) => sc,
-    //     None => StoredCredentials::empty()
-    // };
     let client_id = request.client_id();
     credential.client_id = client_id.clone();
 
@@ -75,7 +71,6 @@ fn delete_keychain_credential(request: &CredentialRequest) -> Result<(), Box<dyn
     let host = request.host.clone();
     let keyring = keyring::Keyring::new(&host, &client_id);
 
-    // keyring.delete_password()?;
     match keyring.delete_password() {
         Ok(_) => Ok(()),
         Err(e) => Err(Box::new(e)),

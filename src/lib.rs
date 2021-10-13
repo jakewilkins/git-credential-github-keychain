@@ -180,7 +180,6 @@ impl GithubKeychainConfig {
             return Ok(())
         }
         let client_id = request.client_id();
-        eprintln!("deleted from file: {}", client_id);
 
         let mut creds = self.credentials.to_owned().unwrap();
         match creds.iter().position(|sc| sc.client_id == client_id) {
