@@ -24,22 +24,6 @@ impl fmt::Display for CredentialError {
 
 impl Error for CredentialError {}
 
-// #[derive(Serialize, Deserialize, Debug, Default, Clone)]
-// pub struct StoredCredentials {
-//     pub client_id: String,
-//     pub credential: Credential
-// }
-
-// impl StoredCredentials {
-//     fn empty() -> StoredCredentials {
-//         StoredCredentials { client_id: String::new(), credential: Credential::empty()}
-//     }
-
-//     fn push(&mut self, cred: Credential) {
-//         self.credential = cred
-//     }
-// }
-
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Credential {
     pub client_id: String,
@@ -124,13 +108,6 @@ impl fmt::Display for CredentialRequest {
 pub struct AppConfig {
     pub path: String,
     pub client_id: String,
-    // pub client_secret: Option<String>,
-}
-
-impl AppConfig {
-    // pub fn is_refreshable(&self) -> bool {
-    //     self.client_secret.is_some()
-    // }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -143,15 +120,10 @@ pub struct GithubKeychainConfig {
 
 impl GithubKeychainConfig {
     pub fn config_for(&self, path: String) -> Option<AppConfig> {
-        // eprintln!("config: {:?}", &self.app_configs);
         let configs = self.app_configs.clone();
 
         let path_parts: Vec<&str> = path.split("/").collect();
         let owner = String::from(path_parts[0]);
-        // eprintln!("path: {:?}", &path);
-        // eprintln!("path_parts: {:?}", &path_parts);
-        // eprintln!("owner: {:?}", &owner);
-
         // TODO: also compare owner/repo maybe, and allow that to
         // override plain owner matches
         configs.into_iter().find(|ac| ac.path == owner)
