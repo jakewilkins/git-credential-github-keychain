@@ -119,7 +119,14 @@ impl fmt::Display for CredentialRequest {
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct AppConfig {
     pub path: String,
-    pub client_id: String
+    pub client_id: String,
+    // pub client_secret: Option<String>,
+}
+
+impl AppConfig {
+    // pub fn is_refreshable(&self) -> bool {
+    //     self.client_secret.is_some()
+    // }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

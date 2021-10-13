@@ -3,7 +3,7 @@
 use std::{result::Result, error::Error, thread, time};
 use std::collections::HashMap;
 
-use crate::{Credential, CredentialRequest};
+use crate::{Credential, CredentialRequest, util};
 
 use chrono::prelude::*;
 use chrono::Duration;
@@ -54,10 +54,7 @@ pub fn device_flow_authorization_flow(config: CredentialRequest) -> Result<Crede
 
             match res.get("expires_in") {
                 Some(expires_in) => {
-                    let expires_in = Duration::seconds(expires_in.as_i64().unwrap());
-                    let mut expiry: DateTime<Utc> = Utc::now();
-                    expiry = expiry + expires_in;
-                    credential.expiry = expiry.to_rfc3339();
+                    credential.expiry = calculate_expiry(expires_in.as_i64().unwrap());
                     credential.refresh_token = res["refresh_token"].as_str().unwrap().to_string();
                 },
                 None => {}
@@ -75,4 +72,49 @@ pub fn device_flow_authorization_flow(config: CredentialRequest) -> Result<Crede
     // println!("logged in as: {}", username);
 
     Ok(credential)
+}
+
+fn calculate_expiry(expires_in: i64) -> String {
+    let expires_in = Duration::seconds(expires_in);
+    let mut expiry: DateTime<Utc> = Utc::now();
+    expiry = expiry + expires_in;
+    expiry.to_rfc3339()
+}
+
+pub fn refresh_credential(credential: &mut Credential, config: &mut CredentialRequest) -> Result<Credential, Box<dyn Error>> {
+    if !config.is_configured() {
+        return Err(util::credential_error("Credential request is not associated to an App Config"))
+    }
+    // let app_config = config.app_config().unwrap();
+    // if !app_config.is_refreshable() {
+    //     return Err(util::credential_error("App does not have a client_secret configured"))
+    // }
+
+    let client = reqwest::blocking::Client::new();
+    let entry_url = format!("https://{}/login/oauth/access_token", config.host);
+    let request_body = format!("client_id={}&refresh_token={}&client_secret=&grant_type=refresh_token",
+        config.username, credential.refresh_token);//, app_config.client_secret.unwrap());
+    // eprintln!("request body is: {}", &request_body);
+
+    let res = client.post(&entry_url)
+        .header("Accept", "application/json")
+        .body(request_body)
+        .send()?
+        .json::<HashMap<String, serde_json::Value>>()?;
+
+    if res.contains_key("error") {
+        Err(util::credential_error(res["error"].as_str().unwrap()))
+    } else {
+        // eprintln!("res: {:?}", &res);
+        credential.token = res["access_token"].as_str().unwrap().to_string();
+
+        match res.get("expires_in") {
+            Some(expires_in) => {
+                credential.expiry = calculate_expiry(expires_in.as_i64().unwrap());
+                credential.refresh_token = res["refresh_token"].as_str().unwrap().to_string();
+            },
+            None => {}
+        }
+        Ok(credential.clone())
+    }
 }

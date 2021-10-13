@@ -125,10 +125,23 @@ pub fn resolve_credential(credential_request: &mut CredentialRequest) -> Result<
                 Ok(Some(sc))
             } else {
                 // eprintln!("sc is expired");
+                let mut cr = sc.clone();
                 credential_request.username = credential_request.client_id();
-                match login_and_store(credential_request) {
-                    Ok(c) => Ok(Some(c)),
-                    Err(e) => Err(e)
+
+                match github::refresh_credential(&mut cr, credential_request) {
+                    Ok(cred) => {
+                        let mut crr = cred.clone();
+                        storage::store_credential(&mut crr, credential_request)?;
+                        Ok(Some(cred))
+                    },
+                    Err(e) => {
+                        eprintln!("Error using refresh token, re-authenticating...");
+                        eprintln!("err: {:?}", e);
+                        match login_and_store(credential_request) {
+                            Ok(c) => Ok(Some(c)),
+                            Err(e) => Err(e)
+                        }
+                    }
                 }
             }
         },
