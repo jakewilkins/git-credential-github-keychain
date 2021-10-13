@@ -12,21 +12,51 @@ Primary goals are:
 
 ### Setup
 
-This tool uses the `credential.username` value in your Git config to determine a Client ID for an application to use.
+This tool stores application configuration information in its own configuration file in
+the default config file location for your OS (e.g. `~/.config/github-keychain` for Unix).
 
-This allows you to specify different Apps for different Orgs you're in.
+We do this to allow you to configure multiple Client IDs used for authentication based on Repo owners.
 
+To setup your initial login file you can run:
+
+```
+$ git-credential-github-keychain login <client_id>
+```
+
+This command will prompt you to login using the OAuth device flow and store the configuration information
+in the helper configuration file.
+
+To configure `git` to use this helper, set the following in your global `git` config, typically `$HOME/.gitconfig`.
 
 ```
 [credential]
   useHttpPath = true
-
-[credential "https://github.com/jakewilkins/*"]
   helper = github-keychain
-  username = "Iv.1abcdeadbeef"
-
-[credential "https://github.com/Apps-Team-at-Work/*"]
-  helper = github-keychain
-  username = "Iv.1abcappsareawesome"
 ```
 
+### Configuration
+
+You can specify several configuration options outlined below:
+
+```
+version = 0
+fallback = 'store --file ~/.config/git/credentials'   # Use this to specify a fallback credential store
+                                                      # if not all your GitHub Repos are using App-based auth
+
+[[app_configs]]
+path = 'repository-owner-name'
+client_id = 'Iv1.addaddadd'
+
+[[app_configs]]
+path = 'other-repository-owner'
+client_id = 'Iv1.badbadbadbad'
+```
+
+### Credential Storage
+
+When available this tool will use the OS provided secret storage mechanism to store OAuth Tokens
+and Refresh Tokens.
+
+When these options fail, for instance on a Linux server, these credentials will be stored in the
+credential helper configuration file. At this point we're relying on the OS file permissions to
+protect access to the credentials.
