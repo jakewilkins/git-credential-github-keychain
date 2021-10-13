@@ -28,7 +28,8 @@ fn parse_line(line: String, mut input: CredentialRequest) -> Result<CredentialRe
         "host" => input.host = value,
         "protocol" => input.protocol = value,
         "path" => input.path = value,
-        _ => return Err(ParseError {reason: String::from("unknown attribute")}),
+        "password" => {},
+        key => return Err(ParseError {reason: String::from(format!("unknown attribute: {}", key))}),
     }
     Ok(input)
 }
