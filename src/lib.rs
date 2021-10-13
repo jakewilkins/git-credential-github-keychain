@@ -85,7 +85,7 @@ impl CredentialRequest {
     }
 
     pub fn client_id(&self) -> String {
-        if self.username.is_empty() {
+        if self.username.is_empty() || self.username == "x-oauth-token" {
             self.app_config().unwrap().client_id.clone()
         } else {
             self.username.clone()
@@ -114,13 +114,16 @@ pub struct AppConfig {
 pub struct GithubKeychainConfig {
     version: u8,
     fallback: String,
-    app_configs: Vec<AppConfig>,
-    credentials: Vec<Credential>,
+    app_configs: Option<Vec<AppConfig>>,
+    credentials: Option<Vec<Credential>>,
 }
 
 impl GithubKeychainConfig {
     pub fn config_for(&self, path: String) -> Option<AppConfig> {
-        let configs = self.app_configs.clone();
+        if self.app_configs.is_none() {
+            return None
+        }
+        let configs = self.app_configs.to_owned().unwrap();
 
         let path_parts: Vec<&str> = path.split("/").collect();
         let owner = String::from(path_parts[0]);
@@ -130,7 +133,10 @@ impl GithubKeychainConfig {
     }
 
     pub fn credential_for(&self, client_id: String) -> Option<Credential> {
-        let configs = self.credentials.clone();
+        if self.credentials.is_none() {
+            return None
+        }
+        let configs = self.credentials.to_owned().unwrap();
 
         // TODO: also compare owner/repo maybe, and allow that to
         // override plain owner matches
@@ -138,13 +144,19 @@ impl GithubKeychainConfig {
     }
 
     pub fn store_credential(&mut self, credential: &Credential) -> Result<(), confy::ConfyError> {
-        match self.credentials.iter().position(|sc| sc.client_id == credential.client_id) {
-            Some(index) => {
-                self.credentials.remove(index);
+        match self.credentials.to_owned() {
+            Some(mut creds) => {
+                match creds.iter().position(|sc| sc.client_id == credential.client_id) {
+                    Some(index) => {
+                        creds.remove(index);
+                    },
+                    None => {},
+                };
+                creds.push(credential.clone());
+                self.credentials = Some(creds)
             },
-            None => {},
-        };
-        self.credentials.push(credential.clone());
+            None => self.credentials = Some(vec![credential.clone()])
+        }
 
         if cfg!(unix) {
             let path = confy::get_configuration_file_path("github-keychain", None)?;
@@ -164,20 +176,33 @@ impl GithubKeychainConfig {
     }
 
     pub fn delete_credential(&mut self, request: &CredentialRequest) -> Result<(), confy::ConfyError> {
+        if self.credentials.is_none() {
+            return Ok(())
+        }
         let client_id = request.client_id();
-        match self.credentials.iter().position(|sc| sc.client_id == client_id) {
+        eprintln!("deleted from file: {}", client_id);
+
+        let mut creds = self.credentials.to_owned().unwrap();
+        match creds.iter().position(|sc| sc.client_id == client_id) {
             Some(index) => {
-                self.credentials.remove(index);
+                creds.remove(index);
             },
             None => {},
         };
+
+        if creds.is_empty() {
+            self.credentials = None
+        } else {
+            self.credentials = Some(creds)
+        }
+
         confy::store("github-keychain", None, self)
     }
 }
 
 /// `GithubKeychainConfig` implements `Default`
 impl ::std::default::Default for GithubKeychainConfig {
-    fn default() -> Self { Self { version: 0, app_configs: Vec::new(), credentials: Vec::new(), fallback: String::new() } }
+    fn default() -> Self { Self { version: 0, app_configs: None, credentials: None, fallback: String::new() } }
 }
 
 #[derive(Debug)]
