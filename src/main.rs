@@ -48,7 +48,7 @@ fn delete_password() -> Result<(), Box<dyn Error>> {
         storage::delete_credential(&mut request)?;
     }
 
-    println!("The password has been deleted");
+    eprintln!("The password has been deleted");
 
     Ok(())
 }
