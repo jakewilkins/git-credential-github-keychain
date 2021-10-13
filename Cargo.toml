@@ -12,5 +12,5 @@ serde = "1.0.116"
 serde_derive = "1.0.116"
 serde_json = "1.0"
 reqwest = { version = "0.10.8", features = ["blocking", "json"] }
-confy = { git = "https://github.com/rust-cli/confy", commit = "664992aecd97b4af0eda8d9d2825885662e1c6b4" }
+confy = { git = "https://github.com/rust-cli/confy", rev = "664992aecd97b4af0eda8d9d2825885662e1c6b4" }
 chrono = "0.4"
