@@ -1,0 +1,110 @@
+name: Create Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build_linux:
+    name: Build git-credential-github-keychain tooling
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
+      - uses: actions-rs/toolchain@v1
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Build release
+        uses: actions-rs/cargo@v1
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        with:
+          command: build
+          args: --release 
+      - name: Create release
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: release-${{ github.sha }}
+          release_name: Release ${{ github.sha }}
+          body: |
+            Changes in this Release - Things.
+          draft: false
+          prerelease: false
+      - name: Compress release assets
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        run: |
+          mv ./target/release/git-credential-github-keychain .
+          zip -9 linux-compiled-version.zip ./git-credential-github-keychain
+      - name: Upload Release Asset
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+          asset_path: ./linux-compiled-version.zip
+          asset_name: linux-compiled-version.zip
+          asset_content_type: application/zip
+  build_macos:
+    name: Build git-credential-github-keychain tooling
+    runs-on: macos-latest
+    needs: build_linux
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/cache@v2
+        id: cache-build
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-macos-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
+      - uses: actions-rs/toolchain@v1
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        with:
+          profile: minimal
+          toolchain: stable
+          target: x86_64-apple-darwin
+          override: true
+      - name: Build release
+        uses: actions-rs/cargo@v1
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        with:
+          command: build
+          args: --release
+      - name: Setup release assets
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        id: release-setup
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          uploads_url=$(script/get-release-uploads-url)
+          echo "setting uploads_url: $uploads_url"
+          echo "::set-output name=uploads-url::$uploads_url"
+          mv ./target/release/git-credential-github-keychain .
+          zip -9 macos-compiled-version.zip ./git-credential-github-keychain
+      - name: Upload Release Asset
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.release-setup.outputs.uploads-url }}
+          asset_path: ./macos-compiled-version.zip
+          asset_name: macos-compiled-version.zip
+          asset_content_type: application/zip
