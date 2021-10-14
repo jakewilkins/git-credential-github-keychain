@@ -1,0 +1,26 @@
+#!/usr/bin/ruby --disable-gems
+
+require "net/http"
+require "json"
+
+github_token = ENV.fetch("GITHUB_TOKEN")
+
+uri = URI("https://api.github.com/repos/jakewilkins/git-credential-github-keychain/releases")
+request = Net::HTTP::Get.new(uri)
+request['Authorization'] = "token #{github_token}"
+response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+  http.request(request)
+end
+
+json = case response
+when Net::HTTPOK
+  JSON.parse(response.body)
+else
+  puts "idk bro: #{response}\n\n#{response.body}"
+  exit 1
+end
+
+latest_release = json[0]
+url = latest_release["upload_url"]
+
+puts url
