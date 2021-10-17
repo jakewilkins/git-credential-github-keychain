@@ -82,7 +82,6 @@ jobs:
           override: true
       - name: Build release
         uses: actions-rs/cargo@v1
-        if: steps.cache-build.outputs.cache-hit != 'true'
         with:
           command: build
           args: --release
