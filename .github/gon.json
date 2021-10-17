@@ -1,5 +1,5 @@
 {
-    "source" : ["./target/release/git-credential-github-keychain"],
+    "source" : ["./git-credential-github-keychain"],
     "bundle_id" : "com.jakewilkins.git-keychain",
     "apple_id": {
         "password":  "@env:AC_PASSWORD"

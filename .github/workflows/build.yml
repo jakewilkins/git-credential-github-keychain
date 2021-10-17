@@ -90,7 +90,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: binaries
-          path: target/release/
+          path: target/release/git-credential-github-keychain
   sign_macos:
     name: Sign and upload git-credential-github-keychain tooling for macs
     runs-on: macos-latest
@@ -103,7 +103,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: binaries
-          path: target/releases
+          path: git-credential-github-keychain
 
       - name: Import Code-Signing Certificates
         uses: Apple-Actions/import-codesign-certs@v1
@@ -124,9 +124,6 @@ jobs:
           AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
         run: |
           gon -log-level=debug -log-json ./.github/gon.json
-      - name: Zip up release directory
-        run: |
-          zip -r release-binaries.zip release/
       - name: Setup release assets
         if: steps.cache-build.outputs.cache-hit != 'true'
         id: release-setup
