@@ -1,0 +1,17 @@
+{
+    "source" : ["./target/release/git-credential-github-keychain"],
+    "bundle_id" : "com.jakewilkins.git-keychain",
+    "apple_id": {
+        "password":  "@env:AC_PASSWORD"
+    },
+    "sign" :{
+        "application_identity" : "34445D22DBA6B1C5B6E0623EA6598FD5644766B7"
+    },
+    "dmg" :{
+        "output_path":  "macos-git-credential-github-keychain.dmg",
+        "volume_name":  "hello-github"
+    },
+    "zip" :{
+        "output_path" : "macos-git-credential-github-keychain.zip"
+    }
+}
