@@ -29,7 +29,7 @@ jobs:
         if: steps.cache-build.outputs.cache-hit != 'true'
         with:
           command: build
-          args: --release 
+          args: --release
       - name: Create release
         if: steps.cache-build.outputs.cache-hit != 'true'
         id: create_release
@@ -50,7 +50,7 @@ jobs:
           zip -9 linux-compiled-version.zip ./git-credential-github-keychain
       - name: Upload Release Asset
         if: steps.cache-build.outputs.cache-hit != 'true'
-        id: upload-release-asset 
+        id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -134,7 +134,7 @@ jobs:
           echo "::set-output name=uploads-url::$uploads_url"
       - name: Upload Release Asset
         if: steps.cache-build.outputs.cache-hit != 'true'
-        id: upload-release-asset 
+        id: upload-release-asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
