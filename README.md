@@ -43,16 +43,13 @@ You can specify several configuration options outlined below:
 
 ```
 version = 0
-fallback = 'store --file ~/.config/git/credentials'   # Use this to specify a fallback credential store
-                                                      # if not all your GitHub Repos are using App-based auth
+fallback = 'osxkeychain'   # If not all your GitHub Repos are using App-based auth
+                           # use this to specify a fallback static credential store
 
-[[app_configs]]
-path = 'repository-owner-name'
-client_id = 'Iv1.addaddadd'
-
-[[app_configs]]
-path = 'other-repository-owner'
-client_id = 'Iv1.badbadbadbad'
+app_configs = [
+  {'path' = 'repository-owner-name', 'client_id' = 'Iv1.addaddadd'},
+  {'path' = 'other-repository-owner', 'client_id' = 'Iv1.badbadbadbad'}
+]
 ```
 
 ### Credential Storage
