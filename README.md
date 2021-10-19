@@ -10,6 +10,9 @@ Primary goals are:
 🤞 Aiming for cross-platform compatibility, I will at least be using it on MacOS and (debian) Linux.
 
 
+![git-credential-github-keychain](https://user-images.githubusercontent.com/19231792/137965800-bdecb59e-b6c3-4f66-a117-9689ceba5025.gif)
+
+
 ### Setup
 
 This tool stores application configuration information in its own configuration file in
