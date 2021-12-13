@@ -16,13 +16,8 @@ fn get_password() -> Result<(), Box<dyn Error>> {
         match this_credential {
             Some(credential) => {
                 // eprintln!("found cred: {:?}", &credential);
-                println!("host={}", request.host);
-                println!("protocol=https");
                 println!("username=x-oauth-token");
                 println!("password={}", credential.token);
-                // if credential.username != "" {
-                //     println!("username={}", credential.username);
-                // }
                 Ok(())
             },
             None => {
