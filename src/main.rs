@@ -81,7 +81,7 @@ fn main() {
 
     // println!("command is: {}", command);
     let result = match command.as_ref() {
-        "set" => set_password(),
+        "store" => set_password(),
         "login" => login(args.get(2)),
         "get" => get_password(),
         "erase" => delete_password(),
