@@ -36,7 +36,6 @@ fn get_password() -> Result<(), Box<dyn Error>> {
 }
 
 fn set_password() -> Result<(), Box<dyn Error>> {
-    eprintln!("setting password not supported, use login");
     Ok(())
 }
 
