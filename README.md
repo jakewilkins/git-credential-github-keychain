@@ -1,4 +1,4 @@
-# GitHub Keychain
+# GitHub App Git Keychain
 
 A Git credential helper that works with GitHub's device flow implementation using refresh tokens.
 
