@@ -51,7 +51,7 @@ jobs:
         if: steps.cache-build.outputs.cache-hit != 'true'
         run: |
           mv ./target/release/git-credential-github-keychain .
-          zip -9 linux-compiled-version.zip ./git-credential-github-keychain
+          zip -9 linux-git-credential-github-keychain.zip ./git-credential-github-keychain
       - name: Upload Release Asset
         if: steps.cache-build.outputs.cache-hit != 'true'
         id: upload-release-asset
@@ -60,8 +60,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: ./linux-compiled-version.zip
-          asset_name: linux-compiled-version.zip
+          asset_path: ./linux-git-credential-github-keychain.zip
+          asset_name: linux-git-credential-github-keychain.zip
           asset_content_type: application/zip
   build_macos:
     name: Build git-credential-github-keychain tooling
