@@ -85,7 +85,7 @@ pub fn execute_fallback(request: CredentialRequest) -> Result<(), Box<dyn Error>
     let mut command_parts: Vec<&str> = gh_conf.fallback.split_whitespace().collect();
     let mut command: Command;
 
-    if command_parts[0].as_bytes()[0] == !b'/' {
+    if command_parts[0].as_bytes()[0] == b'/' {
         command = Command::new(command_parts[0]);
     } else {
         command = Command::new("git");
