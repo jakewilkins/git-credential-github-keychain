@@ -21,7 +21,11 @@ pub fn device_flow_authorization_flow(config: CredentialRequest) -> Result<Crede
         .send()?
         .json::<HashMap<String, serde_json::Value>>()?;
 
-    // eprintln!("res is {:?}", config);
+    if res.contains_key("error") && res.contains_key("error_description"){
+        return Err(util::credential_error(res["error_description"].as_str().unwrap()))
+    }
+
+    // eprintln!("res is {:?}", res);
     eprintln!("Please visit {} in your browser", res["verification_uri"]);
     eprintln!("And enter code: {}", res["user_code"].as_str().unwrap());
 
