@@ -177,10 +177,11 @@ dependencies = [
 [[package]]
 name = "confy"
 version = "0.4.0"
-source = "git+https://github.com/rust-cli/confy?rev=664992aecd97b4af0eda8d9d2825885662e1c6b4#664992aecd97b4af0eda8d9d2825885662e1c6b4"
+source = "git+https://github.com/rust-cli/confy?rev=642822413139ce38a96b916190e8c7fd5b88e814#642822413139ce38a96b916190e8c7fd5b88e814"
 dependencies = [
  "directories-next",
  "serde",
+ "thiserror",
  "toml",
 ]
 
