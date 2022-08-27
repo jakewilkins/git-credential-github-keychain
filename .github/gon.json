@@ -5,7 +5,7 @@
         "password":  "@env:AC_PASSWORD"
     },
     "sign" :{
-        "application_identity" : "033907F3EB8DBD2DA78C444FE36245B7504BF3FE"
+        "application_identity" : "953B573CC1A995DAC89C59C3FFEA57E8037056DD"
     },
     "zip" :{
         "output_path" : "macos-git-credential-github-keychain.zip"
