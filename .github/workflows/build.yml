@@ -107,7 +107,10 @@ jobs:
         with:
           name: binaries
           path: git-credential-github-keychain
-
+      - name: take a look
+        run: |
+          ls -larth 
+          ls -larth *
       - name: Import Code-Signing Certificates
         uses: Apple-Actions/import-codesign-certs@v1
         with:
