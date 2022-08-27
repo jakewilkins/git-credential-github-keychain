@@ -1,11 +1,13 @@
 name: Create Release
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - Cargo.*
       - .github/*
+      - .github/workflows/build.yml
       - src/*
 
 jobs:
