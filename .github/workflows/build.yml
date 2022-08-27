@@ -66,7 +66,7 @@ jobs:
           asset_name: linux-git-credential-github-keychain.zip
           asset_content_type: application/zip
   build_macos:
-    name: Build git-credential-github-keychain tooling
+    name: Build git-credential-github-keychain macos tooling
     runs-on: macos-latest
     needs: build_linux
     steps:
@@ -103,7 +103,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-
       - name: Download-Binaries
         uses: actions/download-artifact@v2
         with:
@@ -113,6 +112,9 @@ jobs:
         run: |
           ls -larth 
           ls -larth *
+          mv git-credential-github-keychain git-credential-github-keychain-dir
+          mv git-credential-github-keychain-dir/git-credential-github-keychain .
+          ls -larth
       - name: Import Code-Signing Certificates
         uses: Apple-Actions/import-codesign-certs@v1
         with:
