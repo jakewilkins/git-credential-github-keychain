@@ -4,8 +4,6 @@ use std::{error::Error};
 use std::io::{self, Read, Write};
 use std::process::{Command, Stdio};
 
-// use git_credential_github_keychain::CredentialRequest;
-
 // Parse "name=value" strings
 fn parse_line(line: String, mut input: CredentialRequest) -> Result<CredentialRequest, ParseError> {
     let mut split = line.split("=");
