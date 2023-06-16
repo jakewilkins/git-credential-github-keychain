@@ -69,7 +69,6 @@ fn main() {
         return;
     }
 
-    println!("args: {:?}", &args);
     let command = &args[1];
     // let cfg: GithubKeychainConfig = confy::load("github-keychain").unwrap();
     // println!("cfg: {:?}", cfg);
