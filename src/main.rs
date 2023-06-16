@@ -64,11 +64,12 @@ fn login(client_id: Option<&String>) -> Result<(), Box<dyn Error>> {
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.capacity() < 2 {
+    if args.len() < 2 {
         println!("usage: login|get|erase");
         return;
     }
 
+    println!("args: {:?}", &args);
     let command = &args[1];
     // let cfg: GithubKeychainConfig = confy::load("github-keychain").unwrap();
     // println!("cfg: {:?}", cfg);
