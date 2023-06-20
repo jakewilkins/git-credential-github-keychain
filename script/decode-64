@@ -1,0 +1,9 @@
+#!/usr/bin/env ruby
+require "base64"
+
+
+env_key = ARGV[0]
+
+decoded = Base64.decode64(ENV[env_key])
+
+File.write(env_key.downcase, decoded)

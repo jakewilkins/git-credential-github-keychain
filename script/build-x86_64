@@ -1,0 +1,5 @@
+#!/bin/bash
+
+docker run --rm -v "$(pwd)":/home/rust/src messense/rust-musl-cross:x86_64-musl cargo build --release
+
+docker run --rm -v "$(pwd)":/home/rust/src messense/rust-musl-cross:x86_64-musl musl-strip /home/rust/src/target/x86_64-unknown-linux-musl/release/git-credential-github-keychain
