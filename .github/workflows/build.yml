@@ -34,7 +34,7 @@ jobs:
       run: |
           sudo chown -R runner:docker ./target
           pushd ./target/x86_64-unknown-linux-musl/release/
-          zip -9 git-credential-github-keychain.x86_64-linux.zip ./github-device-flow
+          zip -9 git-credential-github-keychain.x86_64-linux.zip ./git-credential-github-keychain
           popd
           mv ./target/x86_64-unknown-linux-musl/release/git-credential-github-keychain.x86_64-linux.zip .
     - name: Upload compiled artifact
@@ -60,7 +60,7 @@ jobs:
       run: |
           sudo chown -R runner:docker ./target
           pushd ./target/arm-unknown-linux-musleabihf/release/
-          zip -9 git-credential-github-keychain.arm-linux.zip ./github-device-flow
+          zip -9 git-credential-github-keychain.arm-linux.zip ./git-credential-github-keychain
           popd
           mv ./target/arm-unknown-linux-musleabihf/release/git-credential-github-keychain.arm-linux.zip .
     - name: Upload compiled artifact
@@ -86,7 +86,7 @@ jobs:
       run: |
           sudo chown -R runner:docker ./target
           pushd ./target/armv7-unknown-linux-musleabihf/release/
-          zip -9 git-credential-github-keychain.armv7-linux.zip ./github-device-flow
+          zip -9 git-credential-github-keychain.armv7-linux.zip ./git-credential-github-keychain
           popd
           mv ./target/armv7-unknown-linux-musleabihf/release/git-credential-github-keychain.armv7-linux.zip .
     - name: Upload compiled artifact
@@ -122,9 +122,9 @@ jobs:
         uses: Apple-Actions/import-codesign-certs@v1
         with:
           # The certificates in a PKCS12 file encoded as a base64 string
-          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
+          p12-file-base64: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
           # The password used to import the PKCS12 file.
-          p12-password: ${{ secrets.MACOS_CERTIFICATE_PW }}
+          p12-password: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
 
       - name: Install gon via HomeBrew for code signing and app notarization
         run: |
@@ -132,7 +132,7 @@ jobs:
           brew install mitchellh/gon/gon
       - name: Move asset
         run: |
-            mv ./target/release/github-device-flow .
+            mv ./target/release/git-credential-github-keychain .
       - name: Sign the mac binaries with Gon
         env:
           AC_USERNAME: ${{ secrets.AC_USERNAME }}
