@@ -8,6 +8,6 @@
         "application_identity" : "953B573CC1A995DAC89C59C3FFEA57E8037056DD"
     },
     "zip" :{
-        "output_path" : "macos-git-credential-github-keychain.zip"
+        "output_path" : "git-credential-github-keychain.macos.zip"
     }
 }

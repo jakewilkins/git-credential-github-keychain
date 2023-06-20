@@ -1,74 +1,96 @@
-name: Create Release
+name: Build and Release
 
 on:
-  workflow_dispatch:
   push:
-    branches: [main]
-    paths:
-      - Cargo.*
-      - .github/*
-      - .github/workflows/build.yml
-      - src/*
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build_linux:
-    name: Build git-credential-github-keychain tooling
+  build_x86_64:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
-      - uses: actions/cache@v2
-        id: cache-build
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
-      - uses: actions-rs/toolchain@v1
-        if: steps.cache-build.outputs.cache-hit != 'true'
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - name: Build release
-        uses: actions-rs/cargo@v1
-        if: steps.cache-build.outputs.cache-hit != 'true'
-        with:
-          command: build
-          args: --release
-      - name: Create release
-        if: steps.cache-build.outputs.cache-hit != 'true'
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: release-${{ github.sha }}
-          release_name: Release ${{ github.sha }}
-          body: |
-            Changes in this Release - Things.
-          draft: false
-          prerelease: false
-      - name: Compress release assets
-        if: steps.cache-build.outputs.cache-hit != 'true'
-        run: |
-          mv ./target/release/git-credential-github-keychain .
-          zip -9 linux-git-credential-github-keychain.zip ./git-credential-github-keychain
-      - name: Upload Release Asset
-        if: steps.cache-build.outputs.cache-hit != 'true'
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: ./linux-git-credential-github-keychain.zip
-          asset_name: linux-git-credential-github-keychain.zip
-          asset_content_type: application/zip
+    - name: Cache
+      uses: actions/cache@v3.0.7
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
+    - uses: actions/checkout@v3
+    - name: Build x86_64 releases
+      run: script/build-x86_64
+    - name: Compress release assets
+      run: |
+          sudo chown -R runner:docker ./target
+          pushd ./target/x86_64-unknown-linux-musl/release/
+          zip -9 git-credential-github-keychain.x86_64-linux.zip ./github-device-flow
+          popd
+          mv ./target/x86_64-unknown-linux-musl/release/git-credential-github-keychain.x86_64-linux.zip .
+    - name: Upload compiled artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: git-credential-github-keychain.x86_64-linux.zip
+        path: git-credential-github-keychain.x86_64-linux.zip
+  build_arm:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Cache
+      uses: actions/cache@v3.0.7
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
+    - uses: actions/checkout@v3
+    - name: Build ARM releases
+      run: script/build-arm
+    - name: Compress release assets
+      run: |
+          sudo chown -R runner:docker ./target
+          pushd ./target/arm-unknown-linux-musleabihf/release/
+          zip -9 git-credential-github-keychain.arm-linux.zip ./github-device-flow
+          popd
+          mv ./target/arm-unknown-linux-musleabihf/release/git-credential-github-keychain.arm-linux.zip .
+    - name: Upload compiled artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: git-credential-github-keychain.arm-linux.zip
+        path: git-credential-github-keychain.arm-linux.zip
+  build_armv7:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Cache
+      uses: actions/cache@v3.0.7
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
+    - uses: actions/checkout@v3
+    - name: Build ARM releases
+      run: script/build-armv7
+    - name: Compress release assets
+      run: |
+          sudo chown -R runner:docker ./target
+          pushd ./target/armv7-unknown-linux-musleabihf/release/
+          zip -9 git-credential-github-keychain.armv7-linux.zip ./github-device-flow
+          popd
+          mv ./target/armv7-unknown-linux-musleabihf/release/git-credential-github-keychain.armv7-linux.zip .
+    - name: Upload compiled artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: git-credential-github-keychain.armv7-linux.zip
+        path: git-credential-github-keychain.armv7-linux.zip
   build_macos:
-    name: Build git-credential-github-keychain macos tooling
+    name: Build macos release
     runs-on: macos-latest
-    needs: build_linux
     steps:
       - uses: actions/checkout@master
       - uses: actions/cache@v2
@@ -80,7 +102,6 @@ jobs:
             target
           key: ${{ runner.os }}-macos-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
       - uses: actions-rs/toolchain@v1
-        if: steps.cache-build.outputs.cache-hit != 'true'
         with:
           profile: minimal
           toolchain: stable
@@ -91,63 +112,84 @@ jobs:
         with:
           command: build
           args: --release
-      - name: upload binary artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: binaries
-          path: target/release/git-credential-github-keychain
-  sign_macos:
-    name: Sign and upload git-credential-github-keychain tooling for macs
-    runs-on: macos-latest
-    needs: build_macos
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Download-Binaries
-        uses: actions/download-artifact@v2
-        with:
-          name: binaries
-          path: git-credential-github-keychain
-      - name: Move downloaded asset out of dir
-        run: |
-          mv git-credential-github-keychain git-credential-github-keychain-dir
-          mv git-credential-github-keychain-dir/git-credential-github-keychain .
       - name: Import Code-Signing Certificates
         uses: Apple-Actions/import-codesign-certs@v1
         with:
           # The certificates in a PKCS12 file encoded as a base64 string
-          p12-file-base64: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
+          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
           # The password used to import the PKCS12 file.
-          p12-password: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+          p12-password: ${{ secrets.MACOS_CERTIFICATE_PW }}
 
       - name: Install gon via HomeBrew for code signing and app notarization
         run: |
           brew tap mitchellh/gon
           brew install mitchellh/gon/gon
-
+      - name: Move asset
+        run: |
+            mv ./target/release/github-device-flow .
       - name: Sign the mac binaries with Gon
         env:
           AC_USERNAME: ${{ secrets.AC_USERNAME }}
           AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
         run: |
           gon -log-level=debug -log-json ./.github/gon.json
-      - name: Setup release assets
-        if: steps.cache-build.outputs.cache-hit != 'true'
-        id: release-setup
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          uploads_url=$(.github/script/get-release-uploads-url)
-          echo "setting uploads_url: $uploads_url"
-          echo "::set-output name=uploads-url::$uploads_url"
-      - name: Upload Release Asset
-        if: steps.cache-build.outputs.cache-hit != 'true'
-        id: upload-release-asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload compiled artifact
+        uses: actions/upload-artifact@v3
         with:
-          upload_url: ${{ steps.release-setup.outputs.uploads-url }}
-          asset_path: ./macos-git-credential-github-keychain.zip
-          asset_name: macos-git-credential-github-keychain.zip
+          name: git-credential-github-keychain.macos.zip
+          path: git-credential-github-keychain.macos.zip
+  create_release:
+    runs-on: ubuntu-latest
+    needs: [build_arm, build_armv7, build_macos, build_x86_64]
+    steps:
+    - name: Create release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+      with:
+          tag_name: release-${{ github.sha }}
+          release_name: Release ${{ github.sha }}
+          body: |
+            Changes in this Release - Things.
+          draft: false
+          prerelease: false
+    - name: Download all workflow run artifacts
+      uses: actions/download-artifact@v3
+    - name: Upload Release Asset x86_64
+      uses: actions/upload-release-asset@v1
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./git-credential-github-keychain.x86_64-linux.zip/git-credential-github-keychain.x86_64-linux.zip
+          asset_name: git-credential-github-keychain.x86_64-linux.zip
           asset_content_type: application/zip
+    - name: Upload Release Asset ARM
+      uses: actions/upload-release-asset@v1
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./git-credential-github-keychain.arm-linux.zip/git-credential-github-keychain.arm-linux.zip
+          asset_name: git-credential-github-keychain.arm-linux.zip
+          asset_content_type: application/zip
+    - name: Upload Release Asset ARMv7
+      uses: actions/upload-release-asset@v1
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./git-credential-github-keychain.armv7-linux.zip/git-credential-github-keychain.armv7-linux.zip
+          asset_name: git-credential-github-keychain.armv7-linux.zip
+          asset_content_type: application/zip
+    - name: Upload Release Asset macos
+      uses: actions/upload-release-asset@v1
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./git-credential-github-keychain.macos.zip/git-credential-github-keychain.macos.zip
+          asset_name: git-credential-github-keychain.macos.zip
+          asset_content_type: application/zip
+
