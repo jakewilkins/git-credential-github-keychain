@@ -1,0 +1,5 @@
+#!/bin/bash
+
+docker run --rm -v "$(pwd)":/home/rust/src messense/rust-musl-cross:arm-musleabihf cargo build --release
+
+docker run --rm -v "$(pwd)":/home/rust/src messense/rust-musl-cross:arm-musleabihf musl-strip /home/rust/src/target/arm-unknown-linux-musleabihf/release/git-credential-github-keychain
