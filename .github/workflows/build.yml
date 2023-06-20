@@ -1,10 +1,16 @@
 name: Build and Release
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+    paths:
+      - Cargo.*
+      - .github/*
+      - .github/workflows/build.yml
+      - src/*
 
 env:
   CARGO_TERM_COLOR: always
