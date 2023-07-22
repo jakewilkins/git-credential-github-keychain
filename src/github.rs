@@ -35,7 +35,7 @@ pub fn refresh_credential(credential: &mut Credential, config: &mut CredentialRe
     if !config.is_configured() {
         return Err(util::credential_error("Credential request is not associated to an App Config"))
     }
-    let refresh_result = github_device_flow::refresh(&credential.refresh_token, &config.username, Some(config.host.clone()));
+    let refresh_result = github_device_flow::refresh(&config.username, &credential.refresh_token, Some(config.host.clone()));
 
     match refresh_result {
         Ok(cred) => {
