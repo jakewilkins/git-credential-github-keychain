@@ -81,7 +81,7 @@ impl CredentialRequest {
     }
 
     pub fn app_config(&self) -> Option<AppConfig> {
-        self.config.config_for(self.path.clone())
+        self.config.config_for(&self)
     }
 
     pub fn client_id(&self) -> String {
@@ -119,28 +119,34 @@ pub struct GithubKeychainConfig {
 }
 
 impl GithubKeychainConfig {
-    pub fn config_for(&self, path: String) -> Option<AppConfig> {
+    pub fn config_for(&self, request: &CredentialRequest) -> Option<AppConfig> {
         if self.app_configs.is_none() {
             return None
         }
         let configs = self.app_configs.to_owned().unwrap();
 
-        let path_parts: Vec<&str> = path.split("/").collect();
-        let owner = String::from(path_parts[0]);
+        let criterion = if request.host == String::from("gist.github.com") {
+            String::from("gist")
+        } else {
+            let path = request.path.clone();
+            let path_parts: Vec<&str> = path.split("/").collect();
+            String::from(path_parts[0])
+        };
+
         // TODO: also compare owner/repo maybe, and allow that to
         // override plain owner matches
-        configs.into_iter().find(|ac| ac.path == owner)
+        configs.into_iter().find(|ac| ac.path == criterion)
     }
 
     pub fn credential_for(&self, client_id: String) -> Option<Credential> {
         if self.credentials.is_none() {
             return None
         }
-        let configs = self.credentials.to_owned().unwrap();
+        let credentials = self.credentials.to_owned().unwrap();
 
         // TODO: also compare owner/repo maybe, and allow that to
         // override plain owner matches
-        configs.into_iter().find(|sc| sc.client_id == client_id)
+        credentials.into_iter().find(|sc| sc.client_id == client_id)
     }
 
     pub fn store_credential(&mut self, credential: &Credential) -> Result<(), confy::ConfyError> {
@@ -196,6 +202,12 @@ impl GithubKeychainConfig {
         }
 
         confy::store("github-keychain", None, self)
+    }
+
+    pub fn default_config(&self) -> Option<AppConfig> {
+        let configs = self.app_configs.to_owned().unwrap();
+
+        configs.into_iter().find(|ac| ac.path == String::from("default"))
     }
 }
 

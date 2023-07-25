@@ -62,7 +62,7 @@ pub fn resolve_username(client_id: Option<&String>) -> Result<CredentialRequest,
             Ok(conf)
         },
         None => {
-            match conf.config.config_for(String::from("default")) {
+            match conf.config.default_config() {
               Some(app_config) => {
                 let mut conf = CredentialRequest::empty();
                 conf.username = app_config.client_id.to_owned();
