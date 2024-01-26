@@ -39,7 +39,6 @@ pub fn read_input() -> Result<CredentialRequest, Box<dyn Error>> {
     let mut input = CredentialRequest::empty();
 
     // println!("read stdin: {}", buffer);
-    // let deserialized = toml::from_str(&buffer);
     for line in buffer.split("\n") {
         if line == "" {
             break
@@ -101,13 +100,6 @@ pub fn execute_fallback(request: CredentialRequest) -> Result<(), Box<dyn Error>
 
     stdin.write(format!("host={}\n", request.host).as_str().as_bytes())?;
 
-    // .arg("Hello world")
-    // eprintln!("cmd: {:?}", command);
-    // let output = child.stdout;
-    // eprintln!("output: {:?}", &output);
-    // let unwrapped = output.expect("Failed to execute command");
-    // println!("{:?}", unwrapped);
-
     Ok(())
 }
 
@@ -163,6 +155,4 @@ pub fn resolve_credential(credential_request: &mut CredentialRequest) -> Result<
             }
         },
     }
-    // let this_credential = stored_credentials.credential.clone();//into_iter().find(|&c| )
-    // Ok(Some(this_credential))
 }
