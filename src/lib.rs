@@ -229,3 +229,55 @@ impl fmt::Display for ParseError {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::{Credential};
+    use chrono::offset::Utc;
+    use chrono::{DateTime, Duration};
+
+    #[test]
+    fn credential_expiry_is_expired_returns_false_when_expiry_is_in_the_future() {
+        let expires_in = Duration::seconds(28800);
+        let mut expiry: DateTime<Utc> = Utc::now();
+        expiry = expiry + expires_in;
+        let calculated_expiry = expiry.to_rfc3339();
+
+        let credential = Credential {
+            client_id: String::from("irrelevant"),
+            token: String::from("irrelevant"),
+            expiry: calculated_expiry,
+            refresh_token: String::from("irrelevant"),
+        };
+
+        assert_eq!(false, credential.is_expired());
+    }
+
+    #[test]
+    fn credential_expiry_is_expired_returns_true_when_expiry_is_in_the_past() {
+        let expires_in = Duration::seconds(42);
+        let mut expiry: DateTime<Utc> = Utc::now();
+        expiry = expiry - expires_in;
+        let calculated_expiry = expiry.to_rfc3339();
+
+        let credential = Credential {
+            client_id: String::from("irrelevant"),
+            token: String::from("irrelevant"),
+            expiry: calculated_expiry,
+            refresh_token: String::from("irrelevant"),
+        };
+
+        assert_eq!(true, credential.is_expired());
+    }
+
+    #[test]
+    fn credential_expiry_is_expired_returns_true_when_expiry_is_in_the_past_parsed_from_json() {
+        let val = "{\"client_id\":\"irrelevant\",\"token\":\"irrelevant\",\"expiry\":\"2023-12-03T04:09:59.620424+00:00\",\"refresh_token\":\"irrelevant\"}";
+        if let Ok(credential) = serde_json::from_str::<Credential>(val) {
+            eprintln!("{:?}", Utc::now());
+            eprintln!("{:?}", credential);
+            assert_eq!(true, credential.is_expired());
+        } else {
+            panic!("failed to parse value!");
+        }
+    }
+}
