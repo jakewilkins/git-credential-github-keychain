@@ -7,34 +7,43 @@ use std::{result::Result, error::Error, env, process};
 use git_credential_github_keychain::{util, storage, CredentialError};
 
 fn get_password() -> Result<(), Box<dyn Error>> {
+    util::trace("main", "processing get_password", Some("main"));
+
     let mut request = util::read_input()?;
 
     // eprintln!("request: {:?}", &request);
     if request.is_configured() {
+        util::trace("main", "request is configured", Some("main"));
         // eprintln!("is_configured!");
         let this_credential = util::resolve_credential(&mut request)?;
         match this_credential {
             Some(credential) => {
-                // eprintln!("found cred: {:?}", &credential);
+                util::trace("main", "Credential resolved, printing to git", Some("main"));
+
                 println!("username=x-oauth-token");
                 println!("password={}", credential.token);
                 Ok(())
             },
             None => {
+                util::trace("main", "Unable to resolve credential, exiting.", Some("main"));
                 eprintln!("no credential found");
                 Err(Box::new(CredentialError("No credential stored for this user".into())))
             }
         }
     } else {
+        util::trace("main", "executing fallback command", Some("main"));
         util::execute_fallback(request)
     }
 }
 
 fn set_password() -> Result<(), Box<dyn Error>> {
+    util::trace("main", "processing set_password", Some("main"));
     Ok(())
 }
 
 fn delete_password() -> Result<(), Box<dyn Error>> {
+    util::trace("main", "processing delete_password", Some("main"));
+
     let mut request = util::read_input()?;
     // TODO this doesn't work
     // We'll have to resolve the app config from the path here

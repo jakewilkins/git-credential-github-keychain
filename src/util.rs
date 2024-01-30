@@ -9,13 +9,20 @@ fn parse_line(line: String, mut input: CredentialRequest) -> Result<CredentialRe
     let mut split = line.split("=");
     // let vec = split.clone().collect::<Vec<&str>>();
     // eprintln!("splt into {:?}", split);
-    if split.clone().count() != 2 {
-        return Err(ParseError {reason: String::from("line needs =")});
+    if split.clone().count() < 2 {
+        return Err(ParseError {reason: String::from(format!("line needs =: {:?}", line))});
     }
+
     let name = match split.next() {
         Some(s) => s,
         None => return Err(ParseError {reason: String::from("line needs a name")}),
     };
+
+    trace("parse", format!("attr name={}", name).as_str(), Some("parse_input"));
+
+    if name == "wwwauth[]" {
+        return Ok(input)
+    }
 
     let value = match split.next() {
         Some(v) => String::from(v),
@@ -53,6 +60,21 @@ pub fn credential_error(msg: &str) -> Box<CredentialError> {
     Box::new(CredentialError(msg.into()))
 }
 
+pub fn trace(location:&str, msg: &str, trace_lvl: Option<&str>) {
+    match std::env::var("GIT_KEYCHAIN_TRACE") {
+        Ok(env_val) => {
+            if trace_lvl.is_none() || trace_lvl.is_some_and(|trace_val| env_val == "true" || env_val == trace_val) {
+                let system_time = std::time::SystemTime::now();
+                let datetime: chrono::DateTime<chrono::offset::Utc> = system_time.into();
+                let time = datetime.format("%T%.f");
+                let log_msg = format!("{} github-keychain:{: <7} trace: {}", time, location, msg);
+                eprintln!("{}", log_msg)
+            }
+        }
+        Err(_) => ()
+    }
+}
+
 pub fn resolve_username(client_id: Option<&String>) -> Result<CredentialRequest, Box<dyn Error>> {
     let mut conf = CredentialRequest::empty();
     match client_id {
@@ -74,8 +96,11 @@ pub fn resolve_username(client_id: Option<&String>) -> Result<CredentialRequest,
 }
 
 pub fn execute_fallback(request: CredentialRequest) -> Result<(), Box<dyn Error>> {
+    trace("flbck", "Attempting to execute fallback command", Some("flbck"));
+
     let gh_conf = request.config;
     if gh_conf.fallback.is_empty() {
+        trace("flbck", "No fallback command configured, exiting...", Some("flbck"));
         return Ok(())
     }
 
@@ -95,23 +120,40 @@ pub fn execute_fallback(request: CredentialRequest) -> Result<(), Box<dyn Error>
     }
     command.arg("get");
     command.stdin(Stdio::piped());
+
+    let trace_string = format!("fallback cmd: {:?}", command);
+    trace("flbck", trace_string.as_str(), Some("flbck"));
+
     let mut child = command.spawn().expect("failed to spawn fallback");
     let mut stdin = child.stdin.take().expect("Failed to open stdin");
 
     stdin.write(format!("host={}\n", request.host).as_str().as_bytes())?;
+    stdin.write("protocol=https\n".as_bytes())?;
+
+    trace("flbck", "Fallback command executed", Some("flbck"));
 
     Ok(())
 }
 
 pub fn login_and_store(request: &mut CredentialRequest) -> Result<Credential, Box<dyn Error>> {
+    trace("login", "Initializing device flow", Some("login"));
+
     match github::device_flow_authorization_flow(request.clone()) {
         Ok(mut credential) => {
+            trace("login", "Successfully authenticated with GitHub", Some("login"));
+
             storage::store_credential(&mut credential, request)?;
 
             eprintln!("Stored credentials for {}.", request.username);
             Ok(credential)
         },
-        Err(e) => { Err(e) }
+        Err(e) => {
+            trace("login", "Failed to authenticate with GitHub:", Some("login"));
+            let err = format!("err: {:?}", e);
+            trace("login", err.as_str(), Some("login"));
+
+            Err(e)
+        }
     }
 }
 
@@ -119,22 +161,29 @@ pub fn resolve_credential(credential_request: &mut CredentialRequest) -> Result<
     match storage::fetch_credential(&credential_request) {
         Some(sc) => {
             if !sc.is_expired() {
-                // eprintln!("sc is not expired");
+                trace("reslv", "Valid credential found", Some("reslv"));
+
                 Ok(Some(sc))
             } else {
-                // eprintln!("sc is expired");
+                trace("reslv", "Expired credential found, attempting to refresh", Some("reslv"));
+
                 let mut cr = sc.clone();
                 credential_request.username = credential_request.client_id();
 
                 match github::refresh_credential(&mut cr, credential_request) {
                     Ok(cred) => {
+                        trace("reslv", "Refreshed credential received", Some("reslv"));
+
                         let mut crr = cred.clone();
                         storage::store_credential(&mut crr, credential_request)?;
                         Ok(Some(cred))
                     },
                     Err(e) => {
+                        trace("reslv", "Error refreshing credential", Some("reslv"));
+                        let err = format!("err: {:?}", e);
+                        trace("reslv", err.as_str(), Some("reslv"));
+
                         eprintln!("Error using refresh token, re-authenticating...");
-                        eprintln!("err: {:?}", e);
                         match login_and_store(credential_request) {
                             Ok(c) => Ok(Some(c)),
                             Err(e) => Err(e)
