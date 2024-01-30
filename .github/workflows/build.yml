@@ -147,7 +147,7 @@ jobs:
   create_release:
     runs-on: ubuntu-latest
     needs: [build_arm, build_armv7, build_macos, build_x86_64]
-		if: startsWith(github.event.ref, 'refs/tags/v')
+    if: startsWith(github.event.ref, 'refs/tags/v')
     steps:
     - name: Create release
       id: create_release
