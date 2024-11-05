@@ -205,3 +205,34 @@ pub fn resolve_credential(credential_request: &mut CredentialRequest) -> Result<
         },
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_line() {
+        let mut input = CredentialRequest::empty();
+        let line = "username=foo".to_string();
+        input = parse_line(line, input).unwrap();
+        assert_eq!(input.username, "foo");
+
+        let line = "host=bar".to_string();
+        input = parse_line(line, input).unwrap();
+        assert_eq!(input.host, "bar");
+
+        let line = "protocol=https".to_string();
+        input = parse_line(line, input).unwrap();
+        assert_eq!(input.protocol, "https");
+
+        let line = "path=/foo/bar".to_string();
+        input = parse_line(line, input).unwrap();
+        assert_eq!(input.path, "/foo/bar");
+
+        // These are valid per git but we ignore them
+        let line = "wwwauth[]=foo".to_string();
+        input = parse_line(line, input).unwrap();
+        let line = "capabilities[]=foo".to_string();
+        input = parse_line(line, input).unwrap();
+    }
+}
