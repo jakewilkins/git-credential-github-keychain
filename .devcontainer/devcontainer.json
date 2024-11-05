@@ -1,0 +1,4 @@
+"name": "git-credential-github-keychain devcontainer",
+"features": {
+    "ghcr.io/devcontainers/features/rust:1": {}
+}
