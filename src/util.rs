@@ -20,7 +20,7 @@ fn parse_line(line: String, mut input: CredentialRequest) -> Result<CredentialRe
 
     trace("parse", format!("attr name={}", name).as_str(), Some("parse_input"));
 
-    if name == "wwwauth[]" || name == "capabilities[]" {
+    if name.contains("[]") {
         return Ok(input)
     }
 
