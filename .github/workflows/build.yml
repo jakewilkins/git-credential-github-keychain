@@ -38,7 +38,7 @@ jobs:
           popd
           mv ./target/x86_64-unknown-linux-musl/release/git-credential-github-keychain.x86_64-linux.zip .
     - name: Upload compiled artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: git-credential-github-keychain.x86_64-linux.zip
         path: git-credential-github-keychain.x86_64-linux.zip
@@ -64,7 +64,7 @@ jobs:
           popd
           mv ./target/arm-unknown-linux-musleabihf/release/git-credential-github-keychain.arm-linux.zip .
     - name: Upload compiled artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: git-credential-github-keychain.arm-linux.zip
         path: git-credential-github-keychain.arm-linux.zip
@@ -90,7 +90,7 @@ jobs:
           popd
           mv ./target/armv7-unknown-linux-musleabihf/release/git-credential-github-keychain.armv7-linux.zip .
     - name: Upload compiled artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: git-credential-github-keychain.armv7-linux.zip
         path: git-credential-github-keychain.armv7-linux.zip
@@ -141,7 +141,7 @@ jobs:
         run: |
           gon -log-level=debug -log-json ./.github/gon.json
       - name: Upload compiled artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: git-credential-github-keychain.macos.zip
           path: git-credential-github-keychain.macos.zip
@@ -163,7 +163,7 @@ jobs:
           draft: false
           prerelease: false
     - name: Download all workflow run artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
     - name: Upload Release Asset x86_64
       uses: actions/upload-release-asset@v1
       env:
