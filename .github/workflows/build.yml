@@ -128,8 +128,8 @@ jobs:
 
       - name: Install gon via HomeBrew for code signing and app notarization
         run: |
-          brew tap ConductorOne/gon
-          brew install ConductorOne/gon/gon
+          brew tap jakewilkins/gon
+          brew install jakewilkins/gon/gon
       - name: Move asset
         run: |
             mv ./target/release/git-credential-github-keychain .
