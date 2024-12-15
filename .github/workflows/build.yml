@@ -93,7 +93,7 @@ jobs:
           target: x86_64-apple-darwin
           override: true
       - name: Build release
-        uses: actions-rs/cargo@v1
+        uses: actions-rs/cargo@v1.0.1
         with:
           command: build
           args: --release
