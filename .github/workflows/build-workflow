@@ -142,6 +142,10 @@ case $1 in
 		build_armv7
 		create_linux_release_artifact armv7-linux
 		;;
+	"macos")
+		build_macos
+		create_macos_artifact
+		;;
 	"local-release")
 		create_release
 		;;
