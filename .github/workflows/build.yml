@@ -86,12 +86,7 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-macos-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: x86_64-apple-darwin
-          override: true
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Build release
         run: .github/workflows/build-workflow macos
       - name: Import Code-Signing Certificates
