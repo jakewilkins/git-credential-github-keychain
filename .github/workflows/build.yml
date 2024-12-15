@@ -93,10 +93,7 @@ jobs:
           target: x86_64-apple-darwin
           override: true
       - name: Build release
-        uses: actions-rs/cargo@v1.0.1
-        with:
-          command: build
-          args: --release
+        run: .github/workflows/build-workflow macos
       - name: Import Code-Signing Certificates
         uses: Apple-Actions/import-codesign-certs@v2
         with:
