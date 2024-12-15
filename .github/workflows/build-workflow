@@ -1,0 +1,157 @@
+#!/bin/bash
+
+function usage {
+		echo "Usage: $0 <subcommand>"
+		exit 1
+}
+
+if [ $# -ne 1 ]; then
+		usage
+fi
+
+function build_x86_64 {
+  docker run --rm -v "$(pwd)":/home/rust/src messense/rust-musl-cross:x86_64-musl cargo build --release
+	docker run --rm -v "$(pwd)":/home/rust/src messense/rust-musl-cross:x86_64-musl musl-strip /home/rust/src/target/x86_64-unknown-linux-musl/release/git-credential-github-keychain
+}
+
+function build_arm {
+	docker run --rm -v "$(pwd)":/home/rust/src messense/rust-musl-cross:arm-musleabihf cargo build --release
+	docker run --rm -v "$(pwd)":/home/rust/src messense/rust-musl-cross:arm-musleabihf musl-strip /home/rust/src/target/arm-unknown-linux-musleabihf/release/git-credential-github-keychain
+}
+
+function build_armv7 {
+	docker run --rm -v "$(pwd)":/home/rust/src messense/rust-musl-cross:armv7-musleabihf cargo build --release
+	docker run --rm -v "$(pwd)":/home/rust/src messense/rust-musl-cross:armv7-musleabihf musl-strip /home/rust/src/target/armv7-unknown-linux-musleabihf/release/git-credential-github-keychain
+}
+
+function create_linux_release_artifact {
+	[ -d linux-release ] && rm -rf linux-release
+	mkdir -p linux-release
+
+	sudo chown -R runner:docker ./target
+
+	if [ "$1" == "x86_64-linux" ]; then
+		cp target/x86_64-unknown-linux-musl/release/git-credential-github-keychain linux-release
+	elif [ "$1" == "arm-linux" ]; then
+		cp target/arm-unknown-linux-musleabihf/release/git-credential-github-keychain linux-release
+	elif [ "$1" == "armv7-linux" ]; then
+		cp target/armv7-unknown-linux-musleabihf/release/git-credential-github-keychain linux-release
+	fi
+	pushd linux-release
+
+	zip -9 git-credential-github-keychain.$1.zip git-credential-github-keychain
+
+	popd
+
+	[ -f linux-release/git-credential-github-keychain.$1.zip ] && mv linux-release/git-credential-github-keychain.$1.zip .
+	[ -d linux-release ] && rm -rf linux-release
+}
+
+function is_macos {
+	system=$(uname -s)
+	if [ "$system" == "Darwin" ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+function build_macos {
+	if is_macos; then
+		cargo build --release
+	else
+		echo "This command must be run on macOS"
+	fi
+}
+
+function create_macos_artifact {
+	if is_macos; then
+		[ -d macos-notarize ] && rm -rf macos-notarize
+		mkdir -p macos-notarize
+		cp target/release/git-credential-github-keychain macos-notarize
+		pushd macos-notarize
+
+		# Notary code from https://developer.apple.com/documentation/security/customizing-the-notarization-workflow
+		codesign --timestamp --options=runtime -s "9878A293D854126F7FA671B065890283793CD152" git-credential-github-keychain
+
+		zip -9 git-credential-github-keychain.macos.zip git-credential-github-keychain
+
+		if [ -z "$AC_USERNAME" ]; then
+			xcrun notarytool submit git-credential-github-keychain.macos.zip --keychain-profile "notarytool-password" --wait
+		else
+			xcrun notarytool submit git-credential-github-keychain.macos.zip --apple-id "$AC_USERNAME" --team-id "$AC_PROVIDER" --password "$AC_PASSWORD" --wait
+		fi
+
+		popd
+
+		[ -f macos-notarize/git-credential-github-keychain.macos.zip ] && mv macos-notarize/git-credential-github-keychain.macos.zip .
+		[ -d macos-notarize ] && rm -rf macos-notarize
+	else
+		echo "This command must be run on macOS"
+	fi
+}
+
+function local_build {
+	build_x86_64
+	build_arm
+	build_armv7
+	build_macos
+}
+
+function create_release {
+	current_tag=$(git tag --points-at HEAD)
+	current_release_tag=$(gh release list --json tagName --limit 1 -q '.[0].tagName')
+
+	if [ "$current_tag" != "$current_release_tag" ]; then
+		echo "Creating release $current_tag"
+	else
+		echo "Release $current_tag already exists"
+		return 1
+	fi
+
+	if [ -z "$current_tag" ]; then
+		echo "No tag found"
+
+		new_tag=$(echo ${current_release_tag} | awk -F. -v OFS=. '{$NF += 1 ; print}')
+
+		if [ -t 0 ]; then
+			read -p "Enter new tag, leave empty for $new_tag or n to exit " new_tag
+		else
+			new_tag="n"
+		fi
+		if [ "$new_tag" == "n" ]; then
+			exit 1
+		fi
+
+		git tag $new_tag
+	fi
+
+	gh release create $new_tag --notes "Release $new_tag"
+}
+
+case $1 in
+	"x86_64")
+		build_x86_64
+		create_linux_release_artifact x86_64-linux
+		;;
+	"arm")
+		build_arm
+		create_linux_release_artifact arm-linux
+		;;
+	"armv7")
+		build_armv7
+		create_linux_release_artifact armv7-linux
+		;;
+	"local-release")
+		create_release
+		;;
+	"local-build")
+		local_build
+		;;
+	"notarize-macos")
+		create_macos_artifact
+		;;
+	*)
+		usage
+		;;
+esac

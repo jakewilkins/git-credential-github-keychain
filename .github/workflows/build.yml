@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Cache
-      uses: actions/cache@v3.0.7
+      uses: actions/cache@v4.2.0
       with:
         path: |
           ~/.cargo/registry
@@ -29,14 +29,7 @@ jobs:
         key: ${{ runner.os }}-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
     - uses: actions/checkout@v3
     - name: Build x86_64 releases
-      run: script/build-x86_64
-    - name: Compress release assets
-      run: |
-          sudo chown -R runner:docker ./target
-          pushd ./target/x86_64-unknown-linux-musl/release/
-          zip -9 git-credential-github-keychain.x86_64-linux.zip ./git-credential-github-keychain
-          popd
-          mv ./target/x86_64-unknown-linux-musl/release/git-credential-github-keychain.x86_64-linux.zip .
+      run: .github/workflows/build-workflow x86_64
     - name: Upload compiled artifact
       uses: actions/upload-artifact@v4
       with:
@@ -46,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Cache
-      uses: actions/cache@v3.0.7
+      uses: actions/cache@v4.2.0
       with:
         path: |
           ~/.cargo/registry
@@ -55,14 +48,7 @@ jobs:
         key: ${{ runner.os }}-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
     - uses: actions/checkout@v3
     - name: Build ARM releases
-      run: script/build-arm
-    - name: Compress release assets
-      run: |
-          sudo chown -R runner:docker ./target
-          pushd ./target/arm-unknown-linux-musleabihf/release/
-          zip -9 git-credential-github-keychain.arm-linux.zip ./git-credential-github-keychain
-          popd
-          mv ./target/arm-unknown-linux-musleabihf/release/git-credential-github-keychain.arm-linux.zip .
+      run: .github/workflows/build-workflow arm-linux
     - name: Upload compiled artifact
       uses: actions/upload-artifact@v4
       with:
@@ -72,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Cache
-      uses: actions/cache@v3.0.7
+      uses: actions/cache@v4.2.0
       with:
         path: |
           ~/.cargo/registry
@@ -81,14 +67,7 @@ jobs:
         key: ${{ runner.os }}-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
     - uses: actions/checkout@v3
     - name: Build ARM releases
-      run: script/build-armv7
-    - name: Compress release assets
-      run: |
-          sudo chown -R runner:docker ./target
-          pushd ./target/armv7-unknown-linux-musleabihf/release/
-          zip -9 git-credential-github-keychain.armv7-linux.zip ./git-credential-github-keychain
-          popd
-          mv ./target/armv7-unknown-linux-musleabihf/release/git-credential-github-keychain.armv7-linux.zip .
+      run: .github/workflows/build-workflow armv7-linux
     - name: Upload compiled artifact
       uses: actions/upload-artifact@v4
       with:
@@ -99,7 +78,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@master
-      - uses: actions/cache@3.0.7
+      - uses: actions/cache@4.2.0
         id: cache-build
         with:
           path: |
@@ -125,26 +104,15 @@ jobs:
           p12-file-base64: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
           # The password used to import the PKCS12 file.
           p12-password: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
-
-      - name: Install gon via HomeBrew for code signing and app notarization
+      - name: Sign and notarize the macOS binary
         run: |
-          brew tap jakewilkins/gon
-          brew install jakewilkins/gon/gon
-      - name: Move asset
-        run: |
-            mv ./target/release/git-credential-github-keychain .
-      - name: Sign the mac binaries with Gon
-        env:
-          AC_USERNAME: ${{ secrets.AC_USERNAME }}
-          AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
-          AC_PROVIDER: ${{ secrets.AC_PROVIDER }}
-        run: |
-          gon -log-level=debug -log-json ./.github/gon.json
+          .github/workflows/build-workflow notarize-macos
       - name: Upload compiled artifact
         uses: actions/upload-artifact@v4
         with:
           name: git-credential-github-keychain.macos.zip
           path: git-credential-github-keychain.macos.zip
+
   create_release:
     runs-on: ubuntu-latest
     needs: [build_arm, build_armv7, build_macos, build_x86_64]
