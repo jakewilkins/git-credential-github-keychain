@@ -20,14 +20,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Cache
-      uses: actions/cache@v4.2.0
+      uses: actions/cache@v5
       with:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
           target
         key: ${{ runner.os }}-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Build x86_64 releases
       run: .github/workflows/build-workflow x86_64
     - name: Upload compiled artifact
@@ -39,14 +39,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Cache
-      uses: actions/cache@v4.2.0
+      uses: actions/cache@v5
       with:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
           target
         key: ${{ runner.os }}-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Build ARM releases
       run: .github/workflows/build-workflow arm
     - name: Upload compiled artifact
@@ -58,14 +58,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Cache
-      uses: actions/cache@v4.2.0
+      uses: actions/cache@v5
       with:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
           target
         key: ${{ runner.os }}-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Build ARM releases
       run: .github/workflows/build-workflow armv7
     - name: Upload compiled artifact
@@ -77,8 +77,8 @@ jobs:
     name: Build macos release
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@master
-      - uses: actions/cache@4.2.0
+      - uses: actions/checkout@v6
+      - uses: actions/cache@v5
         id: cache-build
         with:
           path: |
@@ -87,7 +87,7 @@ jobs:
             target
           key: ${{ runner.os }}-macos-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
       - name: Import Code-Signing Certificates
-        uses: Apple-Actions/import-codesign-certs@v2
+        uses: Apple-Actions/import-codesign-certs@v7
         with:
           # The certificates in a PKCS12 file encoded as a base64 string
           p12-file-base64: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
