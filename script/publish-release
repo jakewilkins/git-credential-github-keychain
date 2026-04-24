@@ -1,0 +1,76 @@
+#!/bin/bash
+set -euo pipefail
+
+CARGO_TOML="Cargo.toml"
+
+function usage {
+	echo "Usage: $0 <new-version>"
+	echo ""
+	echo "  Bumps the version in $CARGO_TOML, commits, and publishes to crates.io."
+	echo ""
+	echo "  Example: $0 0.3.0"
+	exit 1
+}
+
+if [ $# -ne 1 ]; then
+	usage
+fi
+
+NEW_VERSION="$1"
+
+# Validate version looks like semver
+if ! echo "$NEW_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+	echo "Error: version must be in semver format (e.g. 1.2.3)"
+	exit 1
+fi
+
+CURRENT_VERSION=$(grep '^version' "$CARGO_TOML" | head -1 | sed 's/.*"\(.*\)"/\1/')
+echo "Current version: $CURRENT_VERSION"
+echo "New version:     $NEW_VERSION"
+
+if [ "$CURRENT_VERSION" = "$NEW_VERSION" ]; then
+	echo "Error: new version is the same as the current version"
+	exit 1
+fi
+
+# Check for uncommitted changes (besides what we're about to touch)
+if ! git diff --quiet HEAD -- ':!Cargo.toml' ':!Cargo.lock'; then
+	echo "Error: there are uncommitted changes outside of Cargo.toml/Cargo.lock"
+	echo "Please commit or stash them first."
+	exit 1
+fi
+
+# Bump version in Cargo.toml
+sed -i '' "s/^version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" "$CARGO_TOML"
+echo "Updated $CARGO_TOML to $NEW_VERSION"
+
+# Let cargo update the lockfile
+cargo check --quiet 2>/dev/null
+
+# Build to make sure everything compiles
+echo "Building..."
+cargo build --quiet
+echo "Build succeeded."
+
+# Dry-run publish
+echo "Running publish dry-run..."
+cargo publish --dry-run --allow-dirty --quiet
+echo "Dry-run succeeded."
+
+# Commit the version bump
+git add Cargo.toml Cargo.lock
+git commit -S -m "Bump version to $NEW_VERSION"
+git tag "v$NEW_VERSION"
+echo "Committed version bump."
+
+# Publish to crates.io
+echo "Publishing to crates.io..."
+cargo publish
+echo "Published github-device-flow v$NEW_VERSION to crates.io."
+
+# Push the commit
+git push
+echo "Pushed to remote."
+
+echo ""
+echo "Done! 🎉"
