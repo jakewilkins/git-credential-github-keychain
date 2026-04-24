@@ -53,9 +53,9 @@ cargo build --quiet
 echo "Build succeeded."
 
 # Dry-run publish
-echo "Running publish dry-run..."
-cargo publish --dry-run --allow-dirty --quiet
-echo "Dry-run succeeded."
+# echo "Running publish dry-run..."
+# cargo publish --dry-run --allow-dirty --quiet
+# echo "Dry-run succeeded."
 
 # Commit the version bump
 git add Cargo.toml Cargo.lock
@@ -64,12 +64,13 @@ git tag "v$NEW_VERSION"
 echo "Committed version bump."
 
 # Publish to crates.io
-echo "Publishing to crates.io..."
-cargo publish
-echo "Published github-device-flow v$NEW_VERSION to crates.io."
+# echo "Publishing to crates.io..."
+# cargo publish
+# echo "Published github-device-flow v$NEW_VERSION to crates.io."
 
 # Push the commit
 git push
+git push --tags
 echo "Pushed to remote."
 
 echo ""
