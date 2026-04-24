@@ -3,6 +3,36 @@ set -euo pipefail
 
 CARGO_TOML="Cargo.toml"
 
+SUCCEEDED="false"
+COMMITTED="false"
+EDITED="false"
+TAGGED="false"
+
+function abort_if_failed {
+	if [[ "$SUCCEEDED" == "false" ]]; then
+		if [[ "$TAGGED" == "true" ]]; then
+			echo "undoing tag"
+			git tag -d "v$NEW_VERSION"
+		fi
+
+		if [[ "$COMMITTED" == "true" ]]; then
+			echo "undoing commit"
+			git reset HEAD~1
+		fi
+
+		if [[ "$EDITED" == "true" ]]; then
+			if ! git diff --quiet || ! git diff --cached --quiet; then
+				echo "undoing edits"
+				git checkout -- Cargo.lock Cargo.toml
+			fi
+		fi
+	else
+		echo "nice"
+	fi
+}
+
+trap abort_if_failed EXIT
+
 function usage {
 	echo "Usage: $0 <new-version>"
 	echo ""
@@ -42,6 +72,7 @@ fi
 
 # Bump version in Cargo.toml
 sed -i '' "s/^version = \"$CURRENT_VERSION\"/version = \"$NEW_VERSION\"/" "$CARGO_TOML"
+EDITED="true"
 echo "Updated $CARGO_TOML to $NEW_VERSION"
 
 # Let cargo update the lockfile
@@ -60,7 +91,9 @@ echo "Build succeeded."
 # Commit the version bump
 git add Cargo.toml Cargo.lock
 git commit -m "Bump version to $NEW_VERSION"
+COMMITTED="true"
 git tag "v$NEW_VERSION"
+TAGGED="true"
 echo "Committed version bump."
 
 # Publish to crates.io
@@ -71,6 +104,7 @@ echo "Committed version bump."
 # Push the commit
 git push
 git push --tags
+SUCCEEDED=true
 echo "Pushed to remote."
 
 echo ""
