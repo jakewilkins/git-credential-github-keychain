@@ -10,7 +10,7 @@ description = "A Git Credential helper that supports GitHub App User-to-Server t
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-keyring = { git = 'https://github.com/jaysonsantos/keyring-rs', branch = 'update-secret-service' }
+keyring = { version = "3.6.3", features = ["apple-native", "windows-native", "async-secret-service", "async-io", "crypto-rust"] }
 serde = "1.0.116"
 serde_derive = "1.0.116"
 serde_json = "1.0"
