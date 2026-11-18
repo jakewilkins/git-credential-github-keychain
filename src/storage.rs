@@ -18,6 +18,16 @@ fn fetch_keychain_credential(request: &CredentialRequest) -> Option<Credential> 
     }
 }
 
+/// The credential stored in the OS keychain for `host` and `client_id`, if any.
+/// Unlike credential lookups during `get`, keychain errors are returned instead of ignored.
+pub fn keychain_credential(host: &str, client_id: &str) -> Result<Option<Credential>, Box<dyn Error>> {
+    match Entry::new(host, client_id)?.get_password() {
+        Ok(data) => Ok(Some(serde_json::from_str(&data)?)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(Box::new(e)),
+    }
+}
+
 fn fetch_file_credential(request: &CredentialRequest) -> Option<Credential> {
     let client_id = request.client_id();
 

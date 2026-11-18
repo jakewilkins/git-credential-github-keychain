@@ -35,13 +35,43 @@ $ git-credential-github-keychain login <client_id>
 This command will prompt you to login using the OAuth device flow and store the configuration information
 in the helper configuration file.
 
-To configure `git` to use this helper, set the following in your global `git` config, typically `$HOME/.gitconfig`.
+To configure `git` to use this helper, run:
 
 ```
-[credential]
-  useHttpPath = true
-  helper = github-keychain
+$ git-credential-github-keychain setup
 ```
+
+This shows the changes it will make to your global `git` config and asks before applying them:
+
+```
+[credential "https://github.com"]
+  helper =
+  helper = github-keychain
+  useHttpPath = true
+```
+
+- The empty `helper =` stops other helpers (for example `osxkeychain` from a system gitconfig) from answering for
+  github.com first. If you still want one for repositories that don't have an app, set it as the `fallback` below.
+- `useHttpPath = true` makes git send the repository path, which the helper uses to pick the app for the repository owner.
+- `--host <host>` configures a GitHub Enterprise Server host instead of github.com.
+- `--dry-run` only prints the changes; `--yes` applies them without asking.
+
+### Troubleshooting
+
+If git isn't using the helper, run:
+
+```
+$ git-credential-github-keychain doctor
+```
+
+It only reads your configuration, and reports:
+- whether git can find this helper, and which copy it will run;
+- which credential helpers git will try for the host, in order;
+- whether `useHttpPath` is on;
+- the apps in the helper config and whether a token is stored for each;
+- whether the current repository's remotes use SSH, which doesn't use credential helpers.
+
+Each problem comes with a suggested fix. It exits with status 1 if it finds an error. Use `--host <host>` to check a GitHub Enterprise Server host.
 
 ### Configuration
 

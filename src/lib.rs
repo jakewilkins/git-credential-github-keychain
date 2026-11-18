@@ -5,6 +5,9 @@ extern crate serde_derive;
 pub mod github;
 pub mod util;
 pub mod storage;
+pub mod git_config;
+pub mod doctor;
+pub mod setup;
 
 use std::{fmt, error::Error};
 use chrono::{DateTime};

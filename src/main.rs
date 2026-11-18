@@ -4,7 +4,9 @@ extern crate git_credential_github_keychain;
 
 use std::{result::Result, error::Error, env, process};
 
-use git_credential_github_keychain::{util, storage, CredentialError};
+use git_credential_github_keychain::{util, storage, doctor, setup, CredentialError};
+
+const USAGE: &str = "usage: login [client_id] | get | erase | setup [--host <host>] [--yes] [--dry-run] | doctor [--host <host>]";
 
 fn get_password() -> Result<(), Box<dyn Error>> {
     util::trace("main", "processing get_password", Some("main"));
@@ -70,11 +72,49 @@ fn login(client_id: Option<&String>) -> Result<(), Box<dyn Error>> {
     }
 }
 
+struct Flags {
+    host: String,
+    yes: bool,
+    dry_run: bool,
+}
+
+fn parse_flags(args: &[String], allow_apply_flags: bool) -> Result<Flags, Box<dyn Error>> {
+    let mut flags = Flags { host: String::from("github.com"), yes: false, dry_run: false };
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--host" => match iter.next() {
+                Some(h) => flags.host = setup::normalize_host(h),
+                None => return Err(util::credential_error("--host needs a value")),
+            },
+            "--yes" | "-y" if allow_apply_flags => flags.yes = true,
+            "--dry-run" | "-n" if allow_apply_flags => flags.dry_run = true,
+            other => return Err(util::credential_error(&format!("unknown option {}\n{}", other, USAGE))),
+        }
+    }
+    Ok(flags)
+}
+
+fn run_setup(args: &[String]) -> Result<(), Box<dyn Error>> {
+    let flags = parse_flags(args, true)?;
+    setup::run(&setup::Options { host: flags.host, yes: flags.yes, dry_run: flags.dry_run })
+}
+
+fn run_doctor(args: &[String]) -> Result<(), Box<dyn Error>> {
+    let flags = parse_flags(args, false)?;
+    let checks = doctor::run(&flags.host);
+    doctor::print(&flags.host, &checks);
+    if doctor::has_errors(&checks) {
+        process::exit(1);
+    }
+    Ok(())
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 2 {
-        println!("usage: login|get|erase");
+        println!("{}", USAGE);
         return;
     }
 
@@ -88,8 +128,10 @@ fn main() {
         "login" => login(args.get(2)),
         "get" => get_password(),
         "erase" => delete_password(),
+        "setup" => run_setup(&args[2..]),
+        "doctor" => run_doctor(&args[2..]),
         _ => {
-            println!("usage: login|get|erase");
+            println!("{}", USAGE);
             Ok(())
         },
     };
