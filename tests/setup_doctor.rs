@@ -34,6 +34,7 @@ impl Sandbox {
             .env("GIT_CONFIG_GLOBAL", self.dir.join("gitconfig-global"))
             .env("GIT_CONFIG_SYSTEM", self.dir.join("gitconfig-system"))
             .env("GIT_CEILING_DIRECTORIES", self.dir.parent().unwrap())
+            .env("GIT_KEYCHAIN_NO_UPDATE_CHECK", "1")
             .env("PATH", path);
         cmd
     }

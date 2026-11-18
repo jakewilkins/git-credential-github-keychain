@@ -73,6 +73,29 @@ It only reads your configuration, and reports:
 
 Each problem comes with a suggested fix. It exits with status 1 if it finds an error. Use `--host <host>` to check a GitHub Enterprise Server host.
 
+Its last step checks GitHub for a newer release. This happens after the report is printed, so if the network is slow
+you can press Ctrl-C without losing the report. Set `GIT_KEYCHAIN_NO_UPDATE_CHECK=1` to skip it.
+
+### Updating
+
+```
+$ git-credential-github-keychain update
+```
+
+This downloads the latest release for your platform and replaces the installed binary, after asking for confirmation:
+
+- The download is checked against the SHA-256 checksum GitHub publishes for the release file. On macOS it must also be
+  signed by this project's Apple Developer ID. If any check fails, nothing is replaced.
+- `--check` only reports whether an update is available. It exits 0 when up to date and 2 when an update is available.
+- `--yes` installs without asking.
+- If the binary is in a directory you can't write to, re-run with `sudo`. Installs managed by Homebrew or Nix should be
+  updated with those tools.
+- Release builds for macOS are Apple Silicon only, so Intel Macs need to build from source.
+
+Versions before `update` was added (0.4.0 and earlier) need to be replaced by hand once: download the zip for your
+platform from the [releases page](https://github.com/jakewilkins/git-credential-github-keychain/releases/latest),
+unzip it, and put the binary where the old one was. Run `git-credential-github-keychain doctor` to see which copy git uses.
+
 ### Configuration
 
 You can specify several configuration options outlined below:

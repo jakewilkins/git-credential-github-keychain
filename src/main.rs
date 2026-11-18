@@ -4,9 +4,9 @@ extern crate git_credential_github_keychain;
 
 use std::{result::Result, error::Error, env, process};
 
-use git_credential_github_keychain::{util, storage, doctor, setup, CredentialError};
+use git_credential_github_keychain::{util, storage, doctor, setup, update, CredentialError};
 
-const USAGE: &str = "usage: login [client_id] | get | erase | setup [--host <host>] [--yes] [--dry-run] | doctor [--host <host>]";
+const USAGE: &str = "usage: login [client_id] | get | erase | setup [--host <host>] [--yes] [--dry-run] | doctor [--host <host>] | update [--yes] [--check] | version";
 
 fn get_password() -> Result<(), Box<dyn Error>> {
     util::trace("main", "processing get_password", Some("main"));
@@ -104,8 +104,25 @@ fn run_doctor(args: &[String]) -> Result<(), Box<dyn Error>> {
     let flags = parse_flags(args, false)?;
     let checks = doctor::run(&flags.host);
     doctor::print(&flags.host, &checks);
+    doctor::print_update_check();
     if doctor::has_errors(&checks) {
         process::exit(1);
+    }
+    Ok(())
+}
+
+fn run_update(args: &[String]) -> Result<(), Box<dyn Error>> {
+    let mut options = update::Options { yes: false, check: false };
+    for arg in args {
+        match arg.as_str() {
+            "--yes" | "-y" => options.yes = true,
+            "--check" => options.check = true,
+            other => return Err(util::credential_error(&format!("unknown option {}\n{}", other, USAGE))),
+        }
+    }
+    let code = update::run(&options)?;
+    if code != 0 {
+        process::exit(code);
     }
     Ok(())
 }
@@ -130,6 +147,11 @@ fn main() {
         "erase" => delete_password(),
         "setup" => run_setup(&args[2..]),
         "doctor" => run_doctor(&args[2..]),
+        "update" => run_update(&args[2..]),
+        "version" | "--version" | "-V" => {
+            println!("{}", update::CURRENT_VERSION);
+            Ok(())
+        },
         _ => {
             println!("{}", USAGE);
             Ok(())
