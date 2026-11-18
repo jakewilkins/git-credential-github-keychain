@@ -1,12 +1,11 @@
 
 use crate::{Credential, CredentialRequest};
 use std::{error::Error};
-use keyring::Keyring;
+use keyring::Entry;
 
 fn fetch_keychain_credential(request: &CredentialRequest) -> Option<Credential> {
     let client_id = request.client_id();
-    let keyring = Keyring::new(&request.host, &client_id);
-    let data = keyring.get_password();
+    let data = Entry::new(&request.host, &client_id).and_then(|entry| entry.get_password());
 
     match data {
         Ok(d) => {
@@ -40,9 +39,9 @@ fn store_keychain_credential(credential: &mut Credential, request: &CredentialRe
 
     let credentials_json = serde_json::to_string(&credential)?;
 
-    let keyring = Keyring::new(&request.host, &client_id);
+    let entry = Entry::new(&request.host, &client_id)?;
 
-    match keyring.set_password(&credentials_json) {
+    match entry.set_password(&credentials_json) {
         Ok(_) => Ok(()),
         Err(e) => Err(Box::new(e)),
     }
@@ -69,9 +68,9 @@ pub fn store_credential(credential: &mut Credential, request: &mut CredentialReq
 fn delete_keychain_credential(request: &CredentialRequest) -> Result<(), Box<dyn Error>> {
     let client_id = request.client_id();
     let host = request.host.clone();
-    let keyring = keyring::Keyring::new(&host, &client_id);
+    let entry = Entry::new(&host, &client_id)?;
 
-    match keyring.delete_password() {
+    match entry.delete_credential() {
         Ok(_) => Ok(()),
         Err(e) => Err(Box::new(e)),
     }
