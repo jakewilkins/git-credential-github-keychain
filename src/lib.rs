@@ -10,9 +10,49 @@ use std::{fmt, error::Error};
 use chrono::{DateTime};
 use chrono::offset::Utc;
 
-#[cfg(target_family = "unix")]
 use std::fs;
+use std::path::PathBuf;
+#[cfg(target_family = "unix")]
 use std::os::unix::fs::PermissionsExt;
+
+const APP_NAME: &str = "github-keychain";
+
+/// Location of the config file, moving it from the pre-confy-2 location first if needed.
+///
+/// confy before 0.5 stored the macOS config in `~/Library/Application Support/rs.github-keychain`;
+/// confy 2 uses `~/.config/github-keychain`, the same as Linux. Linux paths are unchanged.
+pub fn config_path() -> Result<PathBuf, confy::ConfyError> {
+    let current = confy::get_configuration_file_path(APP_NAME, None)?;
+
+    #[cfg(target_os = "macos")]
+    if let Some(legacy) = legacy_macos_config_path() {
+        // symlink_metadata so an existing symlink at the new path (even a dangling one) is never replaced.
+        if current.symlink_metadata().is_err() && legacy.symlink_metadata().is_ok() {
+            let moved = current.parent().map_or(Ok(()), fs::create_dir_all)
+                .and_then(|_| fs::rename(&legacy, &current));
+            match moved {
+                Ok(_) => {
+                    eprintln!("github-keychain: moved config from {} to {}", legacy.display(), current.display());
+                    if let Some(dir) = legacy.parent() {
+                        let _ = fs::remove_dir(dir); // only succeeds if now empty
+                    }
+                },
+                Err(e) => {
+                    eprintln!("github-keychain: could not move config from {} to {}: {}", legacy.display(), current.display(), e);
+                    return Ok(legacy);
+                },
+            }
+        }
+    }
+
+    Ok(current)
+}
+
+#[cfg(target_os = "macos")]
+fn legacy_macos_config_path() -> Option<PathBuf> {
+    let home = std::env::var_os("HOME")?;
+    Some(PathBuf::from(home).join("Library/Application Support/rs.github-keychain/default-config.toml"))
+}
 
 #[derive(Debug)]
 pub struct CredentialError(pub String);
@@ -64,7 +104,7 @@ pub struct CredentialRequest {
 
 impl CredentialRequest {
     fn empty() -> CredentialRequest {
-        let cfg: GithubKeychainConfig = confy::load("github-keychain", None).unwrap();
+        let cfg: GithubKeychainConfig = confy::load_path(config_path().unwrap()).unwrap();
 
         CredentialRequest {
             username: String::new(),
@@ -164,21 +204,22 @@ impl GithubKeychainConfig {
             None => self.credentials = Some(vec![credential.clone()])
         }
 
-        if cfg!(unix) {
-            let path = confy::get_configuration_file_path("github-keychain", None)?;
+        let path = config_path()?;
+        #[cfg(target_family = "unix")]
+        {
             match fs::metadata(&path) {
                 Ok(meta) => {
                     let mut perms = meta.permissions();
                     let mode = 0o600;
                     if perms.mode() != mode {
                         perms.set_mode(mode);
-                        fs::set_permissions(path, perms).unwrap();
+                        fs::set_permissions(&path, perms).unwrap();
                     }
                 },
                 Err(_) => {}
             }
         }
-        confy::store("github-keychain", None, self)
+        confy::store_path(path, self)
     }
 
     pub fn delete_credential(&mut self, request: &CredentialRequest) -> Result<(), confy::ConfyError> {
@@ -201,7 +242,7 @@ impl GithubKeychainConfig {
             self.credentials = Some(creds)
         }
 
-        confy::store("github-keychain", None, self)
+        confy::store_path(config_path()?, self)
     }
 
     pub fn default_config(&self) -> Option<AppConfig> {
