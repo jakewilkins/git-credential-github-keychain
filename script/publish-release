@@ -54,6 +54,19 @@ if ! echo "$NEW_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
 	exit 1
 fi
 
+# Releases must be cut from an up-to-date main, since pushing the tag triggers the release build.
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$CURRENT_BRANCH" != "main" ]; then
+	echo "Error: releases must be published from main (currently on $CURRENT_BRANCH)"
+	exit 1
+fi
+
+git fetch --quiet origin main
+if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+	echo "Error: local main is not in sync with origin/main; pull or push first"
+	exit 1
+fi
+
 CURRENT_VERSION=$(grep '^version' "$CARGO_TOML" | head -1 | sed 's/.*"\(.*\)"/\1/')
 echo "Current version: $CURRENT_VERSION"
 echo "New version:     $NEW_VERSION"
