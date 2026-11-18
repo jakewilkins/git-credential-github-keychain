@@ -1,0 +1,27 @@
+name: Notarize existing release
+
+# Notarizes the macOS build already attached to a release, e.g. after notarization
+# failed during the release run. The file isn't changed, so its checksum stays valid.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to notarize (e.g. v0.5.0)
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  notarize:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Notarize release macOS build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          AC_PROVIDER: ${{ secrets.AC_PROVIDER }}
+          AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
+          AC_USERNAME: ${{ secrets.AC_USERNAME }}
+        run: .github/workflows/build-workflow notarize-release "$TAG"

@@ -5,7 +5,7 @@ function usage {
 		exit 1
 }
 
-if [ $# -ne 1 ]; then
+if [ $# -lt 1 ]; then
 		usage
 fi
 
@@ -61,34 +61,102 @@ function build_macos {
 		cargo build --release
 	else
 		echo "This command must be run on macOS"
+		return 1
 	fi
 }
 
-function create_macos_artifact {
-	if is_macos; then
-		[ -d macos-notarize ] && rm -rf macos-notarize
-		mkdir -p macos-notarize
-		cp target/release/git-credential-github-keychain macos-notarize
-		pushd macos-notarize
-
-		# Notary code from https://developer.apple.com/documentation/security/customizing-the-notarization-workflow
-		codesign --timestamp --options=runtime -s "9878A293D854126F7FA671B065890283793CD152" git-credential-github-keychain
-
-		zip -9 git-credential-github-keychain.macos.zip git-credential-github-keychain
-
-		if [ -z "$AC_USERNAME" ]; then
-			xcrun notarytool submit git-credential-github-keychain.macos.zip --keychain-profile "notarytool-password" --wait
-		else
-			xcrun notarytool submit git-credential-github-keychain.macos.zip --apple-id "$AC_USERNAME" --team-id "$AC_PROVIDER" --password "$AC_PASSWORD" --wait
-		fi
-
-		popd
-
-		[ -f macos-notarize/git-credential-github-keychain.macos.zip ] && mv macos-notarize/git-credential-github-keychain.macos.zip .
-		[ -d macos-notarize ] && rm -rf macos-notarize
+# Sets NOTARY_AUTH: CI secrets when present, otherwise the local keychain profile.
+function notarytool_auth {
+	if [ -z "${AC_USERNAME:-}" ]; then
+		NOTARY_AUTH=(--keychain-profile "notarytool-password")
 	else
-		echo "This command must be run on macOS"
+		NOTARY_AUTH=(--apple-id "$AC_USERNAME" --team-id "$AC_PROVIDER" --password "$AC_PASSWORD")
 	fi
+}
+
+# Submit a zip for notarization and fail unless Apple accepts it.
+function notarize_zip {
+	local zip="$1" result status id
+	notarytool_auth
+
+	if ! result=$(xcrun notarytool submit "$zip" "${NOTARY_AUTH[@]}" --wait --output-format json 2>&1); then
+		echo "notarytool submit failed:"
+		echo "$result"
+		return 1
+	fi
+	echo "$result"
+
+	status=$(echo "$result" | plutil -extract status raw -o - - 2>/dev/null)
+	id=$(echo "$result" | plutil -extract id raw -o - - 2>/dev/null)
+	if [ "$status" != "Accepted" ]; then
+		echo "Notarization was not accepted (status: ${status:-unknown})"
+		if [ -n "$id" ]; then
+			xcrun notarytool log "$id" "${NOTARY_AUTH[@]}" || true
+		fi
+		return 1
+	fi
+	echo "Notarization accepted (submission $id)"
+}
+
+# Confirm Gatekeeper sees the binary as notarized. Apple's online record can lag
+# briefly behind an accepted submission, so retry for about a minute.
+function check_gatekeeper {
+	local binary="$1" attempt out
+	for attempt in 1 2 3 4 5 6; do
+		out=$(spctl --assess --type open --context context:primary-signature -vv "$binary" 2>&1 || true)
+		if echo "$out" | grep -q "source=Notarized Developer ID"; then
+			echo "$out"
+			return 0
+		fi
+		echo "Gatekeeper check $attempt: $out"
+		sleep 10
+	done
+	echo "Gatekeeper does not report $binary as notarized"
+	return 1
+}
+
+function create_macos_artifact {
+	if ! is_macos; then
+		echo "This command must be run on macOS"
+		return 1
+	fi
+
+	[ -d macos-notarize ] && rm -rf macos-notarize
+	mkdir -p macos-notarize
+	cp target/release/git-credential-github-keychain macos-notarize || return 1
+	pushd macos-notarize
+
+	# Notary code from https://developer.apple.com/documentation/security/customizing-the-notarization-workflow
+	codesign --timestamp --options=runtime -s "9878A293D854126F7FA671B065890283793CD152" git-credential-github-keychain || return 1
+	zip -9 git-credential-github-keychain.macos.zip git-credential-github-keychain || return 1
+	notarize_zip git-credential-github-keychain.macos.zip || return 1
+	check_gatekeeper git-credential-github-keychain || return 1
+
+	popd
+
+	mv macos-notarize/git-credential-github-keychain.macos.zip . || return 1
+	rm -rf macos-notarize
+}
+
+# Notarize the macOS build already attached to a published release (e.g. after a
+# notarization outage). The file isn't changed, so its published checksum stays valid.
+function notarize_release {
+	local tag="$1" dir
+	if ! is_macos; then
+		echo "This command must be run on macOS"
+		return 1
+	fi
+	if [ -z "$tag" ]; then
+		echo "Usage: $0 notarize-release <tag>"
+		return 1
+	fi
+
+	dir=$(mktemp -d)
+	gh release download "$tag" --pattern git-credential-github-keychain.macos.zip --dir "$dir" || return 1
+	unzip -q "$dir/git-credential-github-keychain.macos.zip" -d "$dir/bin" || return 1
+	notarize_zip "$dir/git-credential-github-keychain.macos.zip" || return 1
+	check_gatekeeper "$dir/bin/git-credential-github-keychain" || return 1
+	rm -rf "$dir"
 }
 
 function local_build {
@@ -143,8 +211,8 @@ case $1 in
 		create_linux_release_artifact armv7-linux
 		;;
 	"macos")
-		build_macos
-		create_macos_artifact
+		build_macos || exit 1
+		create_macos_artifact || exit 1
 		;;
 	"local-release")
 		create_release
@@ -153,7 +221,10 @@ case $1 in
 		local_build
 		;;
 	"notarize-macos")
-		create_macos_artifact
+		create_macos_artifact || exit 1
+		;;
+	"notarize-release")
+		notarize_release "${2:-}" || exit 1
 		;;
 	*)
 		usage

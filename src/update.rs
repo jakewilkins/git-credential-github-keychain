@@ -178,12 +178,31 @@ fn verify_signature(path: &Path) -> Result<(), Box<dyn Error>> {
     let output = Command::new("codesign")
         .args(["--verify", "--strict", "-R"]).arg(&requirement).arg(path)
         .output()?;
-    if output.status.success() {
+    if !output.status.success() {
+        return Err(credential_error(&format!("the download isn't signed by the expected developer: {}",
+            String::from_utf8_lossy(&output.stderr).trim())));
+    }
+
+    // A valid signature isn't enough: Gatekeeper blocks binaries Apple hasn't notarized.
+    let output = Command::new("spctl")
+        .args(["--assess", "--type", "open", "--context", "context:primary-signature", "-vv"])
+        .arg(path)
+        .output()?;
+    let report = format!("{}{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr));
+    if is_notarized(&report) {
         Ok(())
     } else {
-        Err(credential_error(&format!("the download isn't signed by the expected developer: {}",
-            String::from_utf8_lossy(&output.stderr).trim())))
+        Err(credential_error(&format!(
+            "the download isn't notarized by Apple, so macOS would block it; please report this at \
+             https://github.com/jakewilkins/git-credential-github-keychain/issues ({})",
+            report.trim().replace('\n', "; "))))
     }
+}
+
+/// Whether `spctl --assess -vv` output reports a notarized Developer ID binary.
+#[cfg(any(target_os = "macos", test))]
+fn is_notarized(spctl_output: &str) -> bool {
+    spctl_output.lines().any(|l| l.trim() == "source=Notarized Developer ID")
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -301,6 +320,13 @@ mod tests {
         assert!(Version::parse("1.2").is_err());
         assert!(Version::parse("1.2.3-beta").is_err());
         assert_eq!(Version(0, 4, 0).to_string(), "0.4.0");
+    }
+
+    #[test]
+    fn test_is_notarized() {
+        assert!(is_notarized("/x/bin: accepted\nsource=Notarized Developer ID\norigin=Developer ID Application: A (T)\n"));
+        assert!(!is_notarized("/x/bin: rejected\nsource=Unnotarized Developer ID\norigin=Developer ID Application: A (T)\n"));
+        assert!(!is_notarized(""));
     }
 
     #[test]
