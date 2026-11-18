@@ -79,6 +79,9 @@ jobs:
   build_macos:
     name: Build macos release
     runs-on: macos-latest
+    env:
+      # Secrets are unavailable to Dependabot and fork PRs; skip signing/notarization there.
+      HAS_SIGNING_SECRETS: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/cache@v5
@@ -90,6 +93,7 @@ jobs:
             target
           key: ${{ runner.os }}-macos-1-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('src/**.rs') }}
       - name: Import Code-Signing Certificates
+        if: env.HAS_SIGNING_SECRETS == 'true'
         uses: Apple-Actions/import-codesign-certs@v7
         with:
           # The certificates in a PKCS12 file encoded as a base64 string
@@ -97,13 +101,18 @@ jobs:
           # The password used to import the PKCS12 file.
           p12-password: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Build (unsigned)
+        if: env.HAS_SIGNING_SECRETS != 'true'
+        run: cargo build --release
       - name: Build release
+        if: env.HAS_SIGNING_SECRETS == 'true'
         env:
           AC_PROVIDER: ${{ secrets.AC_PROVIDER }}
           AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
           AC_USERNAME: ${{ secrets.AC_USERNAME }}
         run: .github/workflows/build-workflow macos
       - name: Upload compiled artifact
+        if: env.HAS_SIGNING_SECRETS == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: git-credential-github-keychain.macos.zip
