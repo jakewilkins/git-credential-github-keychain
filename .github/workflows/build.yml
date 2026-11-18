@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [ "main" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "main" ]
     paths:
@@ -123,56 +124,19 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     needs: [build_arm, build_armv7, build_macos, build_x86_64]
-    if: startsWith(github.event.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
-    - name: Create release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-      with:
-          tag_name: release-${{ github.sha }}
-          release_name: Release ${{ github.sha }}
-          body: |
-            Changes in this Release - Things.
-          draft: false
-          prerelease: false
     - name: Download all workflow run artifacts
       uses: actions/download-artifact@v4
-    - name: Upload Release Asset x86_64
-      uses: actions/upload-release-asset@v1
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./git-credential-github-keychain.x86_64-linux.zip/git-credential-github-keychain.x86_64-linux.zip
-          asset_name: git-credential-github-keychain.x86_64-linux.zip
-          asset_content_type: application/zip
-    - name: Upload Release Asset ARM
-      uses: actions/upload-release-asset@v1
+        path: dist
+        merge-multiple: true
+    - name: Create release
       env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./git-credential-github-keychain.arm-linux.zip/git-credential-github-keychain.arm-linux.zip
-          asset_name: git-credential-github-keychain.arm-linux.zip
-          asset_content_type: application/zip
-    - name: Upload Release Asset ARMv7
-      uses: actions/upload-release-asset@v1
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./git-credential-github-keychain.armv7-linux.zip/git-credential-github-keychain.armv7-linux.zip
-          asset_name: git-credential-github-keychain.armv7-linux.zip
-          asset_content_type: application/zip
-    - name: Upload Release Asset macos
-      uses: actions/upload-release-asset@v1
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./git-credential-github-keychain.macos.zip/git-credential-github-keychain.macos.zip
-          asset_name: git-credential-github-keychain.macos.zip
-          asset_content_type: application/zip
-
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "$GITHUB_REF_NAME" dist/*.zip \
+          --repo "$GITHUB_REPOSITORY" \
+          --title "$GITHUB_REF_NAME" \
+          --verify-tag \
+          --generate-notes
