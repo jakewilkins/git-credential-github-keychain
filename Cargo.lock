@@ -775,9 +775,9 @@ dependencies = [
 
 [[package]]
 name = "github-device-flow"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b814186fdf5c904a69b9754e47783332102b4b92a090105843e5e9c6bbf4569"
+checksum = "d1870012125b25eb9abdeac9ca1ef8a24a5cee45395810a0f746fb2487bb56b9"
 dependencies = [
  "chrono",
  "clap",
