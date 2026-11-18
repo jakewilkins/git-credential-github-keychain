@@ -8,6 +8,7 @@ pub mod storage;
 pub mod git_config;
 pub mod doctor;
 pub mod setup;
+pub mod update;
 
 use std::{fmt, error::Error};
 use chrono::{DateTime};

@@ -68,7 +68,7 @@ fn shell_quote(arg: &str) -> String {
     }
 }
 
-fn confirm(prompt: &str) -> io::Result<bool> {
+pub(crate) fn confirm(prompt: &str) -> io::Result<bool> {
     print!("{} [y/N] ", prompt);
     io::stdout().flush()?;
     let mut answer = String::new();

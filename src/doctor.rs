@@ -4,7 +4,7 @@ use std::fmt;
 use std::path::Path;
 
 use crate::git_config::{self, BINARY_NAME, HELPER_NAME};
-use crate::{config_path, storage, GithubKeychainConfig};
+use crate::{config_path, storage, update, GithubKeychainConfig};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Status {
@@ -112,6 +112,25 @@ pub fn print(host: &str, checks: &[Check]) {
         Status::Warn => println!("No errors, but see the warnings above."),
         _ => println!("Everything looks good."),
     }
+}
+
+/// Check GitHub for a newer release. Runs after the report is printed, so a slow or
+/// hanging network only delays this one line.
+pub fn print_update_check() {
+    if std::env::var_os("GIT_KEYCHAIN_NO_UPDATE_CHECK").is_some() {
+        return;
+    }
+    use std::io::Write;
+    print!("\nChecking for updates (Ctrl-C to skip)... ");
+    let _ = std::io::stdout().flush();
+
+    let line = match update::check(std::time::Duration::from_secs(5)) {
+        Ok(status) if status.available() => format!("{} version {} is available (you have {}): run `{} update`",
+            Status::Info, status.latest, status.current, BINARY_NAME),
+        Ok(status) => format!("{} up to date ({})", Status::Ok, status.current),
+        Err(e) => format!("{} couldn't check for updates: {}", Status::Info, e),
+    };
+    println!("\n{}", line);
 }
 
 pub fn has_errors(checks: &[Check]) -> bool {
