@@ -105,7 +105,8 @@ echo "Build succeeded."
 git add Cargo.toml Cargo.lock
 git commit -m "Bump version to $NEW_VERSION"
 COMMITTED="true"
-git tag "v$NEW_VERSION"
+# Annotated tag with a message, so it also works non-interactively when tag.gpgsign is set.
+git tag -a "v$NEW_VERSION" -m "v$NEW_VERSION"
 TAGGED="true"
 echo "Committed version bump."
 
